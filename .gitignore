@@ -1,0 +1,32 @@
+# ── 签名密钥（绝不能入库）────────────────────────────
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+sign.properties
+
+# ── Android 构建产物 ─────────────────────────────────
+*.apk
+*.ap_
+*.dex
+*.idsig
+gen/
+out/
+dexout/
+compiled-*.zip
+classes-*.jar
+
+# ── Node / Electron ──────────────────────────────────
+node_modules/
+dist/
+*.log
+npm-debug.log*
+
+# ── 系统 / 编辑器 ────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp

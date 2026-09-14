@@ -1,0 +1,44 @@
+{
+  "name": "kuaisujilu-pro",
+  "productName": "快速记录pro",
+  "version": "1.0.0",
+  "description": "快速记录 Pro — 单文件 HTML 记事本的 Windows 桌面版外壳",
+  "main": "main.js",
+  "author": "quicknote",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --dir"
+  },
+  "devDependencies": {
+    "electron": "^44.3.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.quicknote.pro",
+    "productName": "快速记录pro",
+    "copyright": "Copyright © 2026",
+    "win": {
+      "target": [
+        "dir"
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "asar": true,
+    "npmRebuild": false
+  }
+}

@@ -1,0 +1,11 @@
+# 统一行尾为 LF：.sh 脚本若带 CRLF 在 Linux/macOS 上会报
+# "/usr/bin/env: 'bash\r': No such file or directory"
+* text=auto eol=lf
+
+# 二进制文件不做行尾转换
+*.png binary
+*.ico binary
+*.jpg binary
+*.jks binary
+*.apk binary
+*.zip binary

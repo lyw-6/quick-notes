@@ -148,7 +148,7 @@ html.kb-lock { --kbh: 0px !important; }
   backdrop-filter: blur(var(--frost-blur)) saturate(160%);
   -webkit-backdrop-filter: blur(var(--frost-blur)) saturate(160%);
 }
-[data-theme="frost"] .doc-tab.active { color:#fff; }
+[data-theme="frost"] .doc-tab.active { color:var(--t); }
 [data-theme="frost"] .tx-panel { background: transparent; }
 [data-theme="frost"] .toolbar { background: rgba(255,255,255, calc(var(--frost-alpha) * 0.76)); }
 /* frost：编辑区与工具栏外框更柔和，避免毛玻璃上出现生硬的灰白线条；顶部/侧边的衔接也过渡自然 */
@@ -180,16 +180,17 @@ html.kb-lock { --kbh: 0px !important; }
     rgba(255,255,255,calc(var(--frost-alpha) * 0.72));
   border-color: rgba(255,255,255,.75);
 }
+/* frost 选中标签同样走方案 A：更实的玻璃面 + 细主色描边 + 深色文字；
+   只保留玻璃质感的内高光，去掉原来那圈 18px 主色光晕（在半透明底上会糊成一团蓝雾） */
 [data-theme="frost"] .doc-tab.active {
-  color:var(--p);
+  color:var(--t);
   background:
     radial-gradient(120% 130% at 50% -30%, rgba(255,255,255,.95) 0%, rgba(255,255,255,.62) 52%, rgba(255,255,255,.18) 100%),
-    rgba(255,255,255,0.92);
-  border-color:rgba(255,255,255,.85);
+    rgba(255,255,255,0.96);
+  border-color:color-mix(in srgb, var(--p) 45%, transparent);
   box-shadow:
     inset 0 1px 1px rgba(255,255,255,.96),
-    0 0 18px color-mix(in srgb, var(--p) 38%, transparent),
-    0 3px 10px rgba(31,38,135,.12);
+    0 1px 3px rgba(31,38,135,.10);
   text-shadow: none;
 }
 [data-theme="frost"] .doc-tab.active .pin { color:var(--p); }
@@ -370,25 +371,17 @@ body.bg-custom header .meta .undo-stack-info { background:transparent; border-co
 .doc-tab:not(.active) { opacity:.62; }
 .doc-tab:not(.active):hover { opacity:1; }
 .doc-tab:hover { background: var(--tool-h); }
-/* 选中标签：更饱和的底色 + 主色描边/光晕 + 底部实色指示条，浅色/毛玻璃下也能一眼区分 */
+/* 选中标签（Chrome 风）：「抬起的实底卡片 + 一道细主色描边 + 深色文字」。
+   旧版把「饱和底色 + 主色描边 + 双层光晕 + 底部实色指示条」四层强调全压在一个 32px 高的小标签上，
+   又满又脏（指示条颜色比底色深好几档还贴着圆角底边）。现在只留两层信号：面更亮 + 边更蓝，
+   蓝色只在置顶图钉上点一下；frost 半透明下也不会糊成一团 */
 .doc-tab.active {
-  background:color-mix(in srgb, var(--p) 30%, var(--card));
-  color:var(--p);
-  border-color:color-mix(in srgb, var(--p) 55%, transparent);
+  background:color-mix(in srgb, var(--p) 8%, var(--card));
+  color:var(--t);
+  border-color:color-mix(in srgb, var(--p) 45%, transparent);
   font-weight:700;
   opacity:1;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--p) 35%, transparent),
-    0 3px 10px color-mix(in srgb, var(--p) 22%, transparent);
-}
-.doc-tab.active::after {
-  content:"";
-  position:absolute;
-  left:9px; right:9px; bottom:3px;
-  height:3px;
-  border-radius:3px;
-  background:var(--p);
-  pointer-events:none;
+  box-shadow:0 1px 3px rgba(0,0,0,.08);
 }
 .doc-tab .x {
   margin-left:2px;
@@ -2117,10 +2110,12 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
 
 .doc-tab .pin { display:inline-flex; align-items:center; justify-content:center; }
 .doc-tab .pin .ic { width:13px; height:13px; }
-.doc-tab .pin.on .ic { fill:var(--p); stroke:none; }
+/* ⚠️ 置顶图钉改用 i-pin-tab（圆头+钉身+底座三笔的描边型）后，绝不能再用 fill 实心表示「已置顶」——
+   钉身与底座是直线 path，填充后只剩一个圆点。置顶与否改由 opacity（.5 vs 1）+ 主色描边 + 略加粗表达 */
+.doc-tab .pin.on .ic { fill:none; stroke:var(--p); stroke-width:2.6; }
 .doc-tab .pin:not(.on) .ic { fill:none; stroke:var(--t); stroke-width:2; }
 .doc-tab.active .pin:not(.on) .ic { stroke:var(--p); }
-.doc-tab.active .pin.on .ic { fill:var(--p); stroke:none; }
+.doc-tab.active .pin.on .ic { fill:none; stroke:var(--p); stroke-width:2.6; }
 .doc-tab .pin.on { color:var(--p); opacity:1; }
 .doc-tab.active .pin.on { color:var(--p); }
 .tab-rename { width:90px; max-width:100%; border:none; background:transparent; color:inherit; font:inherit; outline:none; padding:0; box-sizing:border-box; }
@@ -2494,6 +2489,9 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
     <symbol id="i-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
     <symbol id="i-slash" viewBox="0 0 24 24"><line x1="20" y1="4" x2="4" y2="20"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></symbol>
+    <!-- 标签栏置顶：圆头 + 钉身 + 底座三笔，比 i-pin 那套填充轮廓在 14px 下更干净
+         （.ic 是 stroke:currentColor;fill:none，填充式路径会被渲成密线空心框） -->
+    <symbol id="i-pin-tab" viewBox="0 0 24 24"><circle cx="12" cy="6.4" r="3.9"/><path d="M12 10.4v6.2"/><path d="M6.6 18.6h10.8"/></symbol>
     <symbol id="i-tpl-mgr" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.4"/><path d="M12 3v3.2M12 17.8V21M3 12h3.2M17.8 12H21M5.2 5.2l2.3 2.3M16.5 16.5l2.3 2.3M18.8 5.2l-2.3 2.3M7.5 16.5l-2.3 2.3"/></symbol>
     <symbol id="i-edit" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M14.06 4.19l3.75 3.75 1.96-1.96a1.5 1.5 0 0 0 0-2.12l-1.83-1.83a1.5 1.5 0 0 0-2.12 0L14.06 4.19z"/></symbol>
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 4 21 9 16 9"/></symbol>
@@ -3464,7 +3462,7 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
     if (!bar) return;
     bindTabsOverflow(bar);
     let html = '';
-    const pinIcon = '<svg class="ic"><use href="#i-pin"/></svg>';
+    const pinIcon = '<svg class="ic"><use href="#i-pin-tab"/></svg>';
     // 置顶文档排前，其余保持原顺序（稳定排序）
     const ids = Object.keys(docs).sort((a, b) => (docs[b].pinned ? 1 : 0) - (docs[a].pinned ? 1 : 0));
     for (const id of ids) {

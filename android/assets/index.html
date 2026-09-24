@@ -1603,20 +1603,30 @@ body.reading #ed { min-height:calc(100dvh - 10px); -webkit-user-select:text; use
 #lineActionBar {
   position:fixed; left:50%; transform:translateX(-50%);
   bottom:calc(16px + var(--kbh,0px) + env(safe-area-inset-bottom,0px));
-  z-index:200; display:none; gap:6px; padding:9px 11px; border-radius:18px;
+  z-index:200; display:none; align-items:center; gap:10px; padding:10px 12px; border-radius:18px;
   background:var(--ed-bg); border:1px solid rgba(0,0,0,.06);
   box-shadow:0 10px 30px rgba(0,0,0,.18);
   backdrop-filter:blur(30px) saturate(200%); -webkit-backdrop-filter:blur(30px) saturate(200%);
+  max-width:calc(100vw - 24px);
 }
 body.line-sel #lineActionBar { display:flex; }
 #lineActionBar button {
-  font-size:.82rem; padding:8px 14px; border-radius:11px;
+  font-size:.82rem; padding:9px 15px; border-radius:11px; min-width:60px; flex:none;
   border:1.5px solid var(--border); background:var(--tool-h); color:var(--t); cursor:pointer;
+  white-space:nowrap; transition:transform .12s, opacity .12s;
 }
 #lineActionBar button:active { transform:scale(.96); }
 #lineActionBar button.danger { background:#fff2f0; color:#ff4d4f; border-color:#ffccc7; }
 #lineActionBar button.primary { background:var(--p); color:#fff; border-color:var(--p); }
-#lineActionBar .lacount { font-size:.74rem; color:var(--s); align-self:center; margin-left:2px; }
+#lineActionBar .la-sep { width:1px; align-self:stretch; margin:3px 0; background:var(--border); opacity:.55; flex:none; }
+#lineActionBar .la-close {
+  min-width:0; width:34px; height:34px; padding:0; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; flex:none;
+}
+#lineActionBar .la-close svg { display:block; width:14px; height:14px; }
+#lineActionBar .lacount { font-size:.74rem; color:var(--s); align-self:center; white-space:nowrap; flex:none; }
+/* 行选择期间禁止拖选文字：避免与横滑手势、点行勾选互相干扰（需压过 body.reading #ed 的 user-select:text） */
+#ed.line-sel, body.reading #ed.line-sel { user-select:none; -webkit-user-select:none; }
 .read-exit {
   position:fixed; bottom:calc(24px + var(--kbh, 0px)); right:20px; z-index:120;
   width:42px; height:42px; border-radius:50%;
@@ -7839,6 +7849,9 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
     const ed = $('ed'); if (!ed) return;
     if (!lineSelMode) {
       lineSelMode = true;
+      // 鼠标横滑进入时浏览器可能已开始拖选文字，清掉避免和行勾选的视觉打架
+      const sel0 = window.getSelection && window.getSelection();
+      if (sel0 && !sel0.isCollapsed) sel0.removeAllRanges();
       document.body.classList.add('line-sel');
       ed.classList.add('line-sel');
       lsRows().forEach(function (el) {
@@ -7902,40 +7915,76 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
     if ($('lineActionBar')) return;
     const bar = document.createElement('div');
     bar.id = 'lineActionBar';
-    bar.innerHTML = '<button type="button" class="primary" data-la="cut">剪切</button>' +
+    bar.innerHTML = '<span class="lacount">已选 0</span>' +
+      '<span class="la-sep"></span>' +
+      '<button type="button" class="primary" data-la="cut">剪切</button>' +
       '<button type="button" class="primary" data-la="copy">复制</button>' +
       '<button type="button" class="danger" data-la="del">删除</button>' +
-      '<button type="button" data-la="cancel">取消</button>' +
-      '<span class="lacount"></span>';
+      '<span class="la-sep"></span>' +
+      '<button type="button" class="la-close" data-la="cancel" aria-label="退出行选择" title="退出">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
+      '</button>';
     document.body.appendChild(bar);
     bar.addEventListener('click', function (e) {
       const b = e.target.closest('[data-la]'); if (!b) return;
       lsAct(b.dataset.la);
     });
   }
+  // 触发条件：光标不在编辑区（非正在编辑）。正在编辑时横滑归浏览器用于拖选文字，不拦截。
+  function lsCanSwipe() {
+    const ed = $('ed');
+    return !!ed && document.activeElement !== ed;
+  }
   function bindLineSelect() {
     const ed = $('ed'); if (!ed) return;
-    let sx = 0, sy = 0, row = null, decided = null;
-    ed.addEventListener('touchstart', function (e) {
-      if (!isReading() || lineSelMode) return;
+    let sx = 0, sy = 0, row = null, decided = null, active = false, canSwipe = false;
+    function begin(x, y, target) {
       const sel = window.getSelection && window.getSelection();
-      if (sel && !sel.isCollapsed) return;
-      const t = e.touches[0]; sx = t.clientX; sy = t.clientY; decided = null; row = lsRowOf(e.target);
+      if (sel && !sel.isCollapsed) { active = false; return; }
+      // 关键：取「按下瞬间」的焦点状态。mousedown 会让编辑区聚焦，
+      // 若等到 move 时再判断，桌面鼠标就永远被当成"正在编辑"而拦掉。
+      canSwipe = lsCanSwipe();
+      sx = x; sy = y; decided = null; row = lsRowOf(target); active = true;
+    }
+    function move(e, x, y) {
+      if (!active || !sx || decided === 'v') return;
+      const dx = x - sx, dy = y - sy;
+      if (Math.abs(dx) < 24) return;
+      if (Math.abs(dx) <= Math.abs(dy)) { decided = 'v'; return; }  // 纵向为主 → 交还滚动
+      decided = 'h';
+      if (lineSelMode) {
+        // 已进入选择模式：左→右滑退出，恢复正常
+        if (dx > 0) { if (e.cancelable) e.preventDefault(); lsExit(); active = false; sx = 0; }
+        return;
+      }
+      if (canSwipe && dx < 0 && row) {
+        if (e.cancelable) e.preventDefault();
+        lsSuppressClick = true; lsEnter(row);
+        sx = x; sy = y;   // 进入后重置起点，之后往回（左→右）滑即可直接退出
+      }
+    }
+    function end() { sx = 0; row = null; decided = null; active = false; }
+    // ── 触摸 ──
+    ed.addEventListener('touchstart', function (e) {
+      const t = e.touches[0]; if (t) begin(t.clientX, t.clientY, e.target);
     }, { passive: true });
     ed.addEventListener('touchmove', function (e) {
-      if (!isReading() || lineSelMode || decided === 'v') return;
-      if (!sx) return;
-      const t = e.touches[0]; const dx = t.clientX - sx, dy = t.clientY - sy;
-      if (Math.abs(dx) < 24) return;
-      if (Math.abs(dx) <= Math.abs(dy)) { decided = 'v'; return; }
-      decided = 'h';
-      if (dx < 0 && row) { e.preventDefault(); lsSuppressClick = true; lsEnter(row); }
+      const t = e.touches[0]; if (t) move(e, t.clientX, t.clientY);
     }, { passive: false });
-    ed.addEventListener('touchend', function () { sx = 0; row = null; decided = null; }, { passive: true });
+    ed.addEventListener('touchend', end, { passive: true });
+    ed.addEventListener('touchcancel', end, { passive: true });
+    // ── 鼠标：与触摸共用同一套判定 ──
+    ed.addEventListener('mousedown', function (e) {
+      if (e.button !== 0) return;
+      begin(e.clientX, e.clientY, e.target);
+    });
+    window.addEventListener('mousemove', function (e) { if (active) move(e, e.clientX, e.clientY); });
+    window.addEventListener('mouseup', end);
+    // 点行切换勾选，点其它处退出
     ed.addEventListener('click', function (e) {
       if (!lineSelMode) return;
       if (lsSuppressClick) { lsSuppressClick = false; return; }
-      if (e.target.closest('.row-cb')) return;
+      if (e.target.closest('.row-cb') || e.target.closest('#lineActionBar')) return;
       const r = lsRowOf(e.target);
       if (r && lsRowHasContent(r)) { lsToggle(r, !lineSelSet.has(r)); return; }
       lsExit();

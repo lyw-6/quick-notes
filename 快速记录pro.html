@@ -461,6 +461,16 @@ body.bg-custom header .meta .undo-stack-info { background:transparent; border-co
   box-shadow:-8px 0 8px -6px rgba(0,0,0,.16);
 }
 .doc-new:hover { background: var(--tool-h); border-color: var(--p); color: var(--p); }
+/* 标签溢出时，「+」左侧铺一道渐隐，暗示右侧还有内容可滑（否则标签被生硬截断）。
+   默认隐藏，由 updateTabsOverflow() 在真实溢出时给容器加 .tabs-overflowing 开启；
+   无溢出时不显示，避免最后一个标签被无故虚化。纯 ::before 蒙层，不动布局 */
+.doc-new::before {
+  content:''; position:absolute; top:0; bottom:0; right:100%;
+  width:18px; margin-right:4px;
+  background:linear-gradient(to right, transparent, var(--bg));
+  opacity:0; pointer-events:none; transition:opacity .15s;
+}
+.doc-tabs.tabs-overflowing .doc-new::before { opacity:1; }
 .card {
   background:transparent;
   border-radius:14px;
@@ -1498,9 +1508,12 @@ body.fullscreen .size-input-popup { z-index:190 !important; }
   #snippetOverlay .more-panel { max-width:600px; }
   #snippetGrid { grid-template-columns:1fr 1fr !important; }
   .editor-wrap { flex:1; min-height:0; margin-bottom:0; display:flex; flex-direction:column; border:none; border-radius:14px; padding-bottom:0; overflow:hidden; }
+  /* dark：桌面端上方把边框清成 none，而卡片底色(#0f172a)与页面底色(#0b1120)只差 ~10 RGB，
+     纯靠背景差边界几乎看不出来 → 给 dark 单独补一圈微亮描边，恢复卡片轮廓 */
+  [data-theme="dark"] .editor-wrap { border:1.5px solid rgba(148,163,184,.22); }
   /* 桌面端 #ed 内部滚动 + 隐藏原生滚动条（只保留自定义 .ed-scroll）：
      padding-bottom:96px 为悬浮胶囊预留留白，工具栏隐藏时【不得】收回（见移动端同款注释，防滚动抖动） */
-  #ed { flex:1; height:auto; min-height:0; padding:18px 18px 96px; font-size:1.05rem; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; scrollbar-width:none; -ms-overflow-style:none; }
+  #ed { flex:1; height:auto; min-height:0; padding:24px 18px 96px; font-size:1.05rem; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; scrollbar-width:none; -ms-overflow-style:none; }
   #ed::-webkit-scrollbar { display:none; }
   #mainToolbar .tarrow { display:none; }
   /* 桌面端：工具栏脱离卡片、浮空为玻璃胶囊，与手机端一致（对齐 960px 居中卡片的内容宽度、居中浮于卡片下方）。
@@ -1822,6 +1835,15 @@ header .meta { display:flex; align-items:center; gap:8px; margin-right:4px; font
   transition:background .15s;
 }
 .icon-btn:active { background:var(--tool-h); transform:scale(.92); }
+@media (max-width:767px) {
+  /* 顶栏按钮触控：基础态 gap 4px + 热区 34px 在手机上偏挤、相邻按钮易误触
+     → 移动端把间距拉到 10px、命中区撑到 ≥38px（外观不变，只放大可点区域）。
+     ★必须放在「新 UI(v2) 覆盖样式」之后：那里同样有 header .right/.icon-btn 的同特异性规则，
+       写在前面会被后面的基础规则压掉（曾被此坑过一次）。 */
+  header .right { gap:10px; }
+  .icon-btn { width:40px; height:40px; }
+  .theme-btn { width:38px; height:38px; }
+}
 .icon-btn .ic { width:20px; height:20px; }
 .close-x {
   display:inline-flex; align-items:center; justify-content:center;
@@ -2489,12 +2511,12 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
     <div class="meta">
       <span id="wordCount">0 字 · 0 段 · 0 行 · 1 分钟</span>
       <span id="saveStatus" style="opacity:0">已保存</span>
-      <span class="undo-stack-info" id="undoStackInfo">步骤 0/0</span>
+      <span class="undo-stack-info" id="undoStackInfo" title="历史记录步数：当前位置 / 总步数（Ctrl+Z 回退，Ctrl+Y 前进）">步骤 0/0</span>
     </div>
     <button class="icon-btn" id="undoBtn" type="button" title="撤销 (Ctrl+Z)"><svg class="ic"><use href="#i-undo"/></svg></button>
     <button class="icon-btn" id="redoBtn" type="button" title="重做 (Ctrl+Y)"><svg class="ic"><use href="#i-redo"/></svg></button>
     <div class="theme-wrap" id="themeWrap">
-      <button class="theme-btn" id="themeBtn" type="button" title="切换主题"><svg class="ic"><use href="#i-moon"/></svg></button>
+      <button class="theme-btn" id="themeBtn" type="button" title="主题：浅色（点击切换到其它主题）"><svg class="ic"><use href="#i-moon"/></svg></button>
       <div class="theme-dd" id="themeDd">
         <button type="button" data-theme-name="light"><svg class="ic"><use href="#i-sun"/></svg><span>浅色</span></button>
         <button type="button" data-theme-name="dark"><svg class="ic"><use href="#i-moon"/></svg><span>深色</span></button>
@@ -2633,7 +2655,7 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
             <span class="tx-scale-min">10</span>
             <span class="tx-scale-max">48</span>
           </div>
-          <button id="sizeResetBtn" type="button" class="tx-size-reset"><svg class="ic"><use href="#i-reset"/></svg><span>默认字号</span></button>
+          <button id="sizeResetBtn" type="button" class="tx-size-reset" title="恢复默认字号"><svg class="ic"><use href="#i-reset"/></svg><span>默认字号</span></button>
         </div>
       </div>
 
@@ -2642,28 +2664,28 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
         <div class="more-section">
           <div class="more-section-title">编辑与插入</div>
           <div class="grid">
-            <button id="findBtn" type="button"><svg class="ic"><use href="#i-search"/></svg>查找替换</button>
-            <button id="timeBtn" type="button"><svg class="ic"><use href="#i-clock"/></svg>插入时间</button>
-            <button id="snippetBtn" type="button"><svg class="ic"><use href="#i-snippet"/></svg>常用语</button>
-            <button id="openMgrBtn" type="button"><svg class="ic"><use href="#i-tpl-mgr"/></svg>模板管理</button>
-            <button id="insertTableBtn" type="button"><svg class="ic"><use href="#i-table"/></svg>表格</button>
-            <button id="insertImageBtn" type="button"><svg class="ic"><use href="#i-image"/></svg>添加图片</button>
-            <button id="insertVideoBtn" type="button"><svg class="ic"><use href="#i-video"/></svg>添加视频</button>
-            <button id="insertAttachBtn" type="button"><svg class="ic"><use href="#i-attachment"/></svg>附件</button>
-            <button id="clearBtn" type="button" style="color:#ff4d4f"><svg class="ic"><use href="#i-trash"/></svg>清空</button>
+            <button id="findBtn" type="button" title="查找替换：在当前文档中搜索关键词并批量替换"><svg class="ic"><use href="#i-search"/></svg>查找替换</button>
+            <button id="timeBtn" type="button" title="插入时间：在光标处插入当前日期时间"><svg class="ic"><use href="#i-clock"/></svg>插入时间</button>
+            <button id="snippetBtn" type="button" title="常用语：插入预设短语（编辑器内输入 / 关键词 也可调用）"><svg class="ic"><use href="#i-snippet"/></svg>常用语</button>
+            <button id="openMgrBtn" type="button" title="模板管理：打开模板 / 历史 / 常用语 / 回收站管理器"><svg class="ic"><use href="#i-tpl-mgr"/></svg>模板管理</button>
+            <button id="insertTableBtn" type="button" title="表格：在光标处插入表格"><svg class="ic"><use href="#i-table"/></svg>表格</button>
+            <button id="insertImageBtn" type="button" title="添加图片：插入本地图片"><svg class="ic"><use href="#i-image"/></svg>添加图片</button>
+            <button id="insertVideoBtn" type="button" title="添加视频：插入本地视频文件"><svg class="ic"><use href="#i-video"/></svg>添加视频</button>
+            <button id="insertAttachBtn" type="button" title="附件：插入文件附件"><svg class="ic"><use href="#i-attachment"/></svg>附件</button>
+            <button id="clearBtn" type="button" style="color:#ff4d4f" title="清空：删除当前文档的全部内容（可在历史中找回）"><svg class="ic"><use href="#i-trash"/></svg>清空</button>
           </div>
         </div>
         <div class="more-section">
           <div class="more-section-title">视图与模式</div>
           <div class="grid">
-            <button id="fsBtn" type="button"><svg class="ic"><use href="#i-fullscreen"/></svg>全屏</button>
-            <button id="readBtn" type="button"><svg class="ic"><use href="#i-read"/></svg>阅读模式</button>
+            <button id="fsBtn" type="button" title="全屏：进入 / 退出全屏写作"><svg class="ic"><use href="#i-fullscreen"/></svg>全屏</button>
+            <button id="readBtn" type="button" title="阅读模式：进入 / 退出沉浸阅读（只看不可改）"><svg class="ic"><use href="#i-read"/></svg>阅读模式</button>
           </div>
         </div>
         <div class="more-section">
           <div class="more-section-title">外观</div>
           <div class="grid">
-            <button id="bgSetBtn" type="button"><svg class="ic"><use href="#i-frost"/></svg>背景设置</button>
+            <button id="bgSetBtn" type="button" title="背景设置：切换内置背景或自定义壁纸"><svg class="ic"><use href="#i-frost"/></svg>背景设置</button>
           </div>
         </div>
         <div class="more-section">
@@ -2678,15 +2700,15 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
         <div class="more-section">
           <div class="more-section-title">数据</div>
           <div class="grid grid-data">
-            <button id="copyFmtBtn" type="button"><svg class="ic"><use href="#i-copy"/></svg>带格式复制</button>
-            <button id="copyPlainBtn" type="button"><svg class="ic"><use href="#i-copy"/></svg>纯文本复制</button>
-            <button id="exportMdBtn" type="button"><svg class="ic"><use href="#i-md"/></svg>导出 MD</button>
-            <button id="exportImgBtn" type="button"><svg class="ic"><use href="#i-image"/></svg>导出图片</button>
-            <button id="exportDocxBtn" type="button"><svg class="ic"><use href="#i-word"/></svg>导出 Word</button>
-            <button id="backupBtn" type="button"><svg class="ic"><use href="#i-backup"/></svg>备份全部数据</button>
-            <button id="restoreBtn" type="button"><svg class="ic"><use href="#i-restore"/></svg>恢复备份</button>
-            <button id="resetDocNoBtn" type="button" style="color:#ff9f43"><svg class="ic"><use href="#i-reset"/></svg>重置文档序号</button>
-            <button id="gsBtn" type="button"><svg class="ic"><use href="#i-search"/></svg>全文搜索</button>
+            <button id="copyFmtBtn" type="button" title="带格式复制：复制全文并保留加粗/颜色等排版"><svg class="ic"><use href="#i-copy"/></svg>带格式复制</button>
+            <button id="copyPlainBtn" type="button" title="纯文本复制：去掉所有格式，只保留文字"><svg class="ic"><use href="#i-copy"/></svg>纯文本复制</button>
+            <button id="exportMdBtn" type="button" title="导出 MD：导出为 .md 文件"><svg class="ic"><use href="#i-md"/></svg>导出 MD</button>
+            <button id="exportImgBtn" type="button" title="导出图片：导出为长图 PNG"><svg class="ic"><use href="#i-image"/></svg>导出图片</button>
+            <button id="exportDocxBtn" type="button" title="导出 Word：导出为 .docx 文档"><svg class="ic"><use href="#i-word"/></svg>导出 Word</button>
+            <button id="backupBtn" type="button" title="备份全部数据：导出为 JSON 备份文件"><svg class="ic"><use href="#i-backup"/></svg>备份全部数据</button>
+            <button id="restoreBtn" type="button" title="恢复备份：从 JSON 备份文件导入数据"><svg class="ic"><use href="#i-restore"/></svg>恢复备份</button>
+            <button id="resetDocNoBtn" type="button" style="color:#ff9f43" title="重置文档序号：按当前标签顺序把「文档N」重新从 1 编号"><svg class="ic"><use href="#i-reset"/></svg>重置文档序号</button>
+            <button id="gsBtn" type="button" title="全文搜索：跨所有文档搜索内容"><svg class="ic"><use href="#i-search"/></svg>全文搜索</button>
             <input type="file" id="restoreFile" style="display:none" accept=".json,application/json">
           </div>
         </div>
@@ -3440,6 +3462,7 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
   function renderTabs() {
     const bar = $('docTabs');
     if (!bar) return;
+    bindTabsOverflow(bar);
     let html = '';
     const pinIcon = '<svg class="ic"><use href="#i-pin"/></svg>';
     // 置顶文档排前，其余保持原顺序（稳定排序）
@@ -3466,6 +3489,32 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
       const inp = bar.querySelector('.tab-rename[data-rename="' + editingTabId + '"]');
       if (inp) { inp.focus(); inp.select(); }
     }
+    scheduleTabsOverflow();
+  }
+
+  // 标签栏右侧渐隐：只有「当前位置之后还有没露出来的标签」才显示，
+  // 滑到最右时会自然消失，避免常驻虚化最后一个标签。
+  function bindTabsOverflow(bar) {
+    if (!bar || bar.dataset.ofBound === '1') return;
+    bar.dataset.ofBound = '1';
+    bar.addEventListener('scroll', scheduleTabsOverflow, { passive: true });
+    window.addEventListener('resize', scheduleTabsOverflow);
+    window.addEventListener('load', scheduleTabsOverflow);
+  }
+  // ★必须推迟到下一帧再算：renderTabs 刚写完 innerHTML 的那一刻布局未必最终稳定，
+  //   此时读 scrollWidth 会漏判溢出（实测首帧算成「没溢出」，导致渐隐不出现）。
+  function scheduleTabsOverflow() {
+    if (window.__ofRaf) return;
+    window.__ofRaf = requestAnimationFrame(function () {
+      window.__ofRaf = 0;
+      updateTabsOverflow();
+    });
+  }
+  function updateTabsOverflow() {
+    const bar = $('docTabs');
+    if (!bar) return;
+    const remain = bar.scrollWidth - bar.scrollLeft - bar.clientWidth;
+    bar.classList.toggle('tabs-overflowing', remain > 4);
   }
 
   // 仅当目标标签不在可视区时才滚动（避免每次渲染都无谓跳动）
@@ -3706,7 +3755,10 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
     const total = u.length + r.length;
     const pos = u.length;
     const info = $('undoStackInfo');
-    if (info) info.textContent = '步骤 ' + pos + '/' + total;
+    if (info) {
+      info.textContent = '步骤 ' + pos + '/' + total;
+      info.title = '历史记录步数：第 ' + pos + ' 步 / 共 ' + total + ' 步（Ctrl+Z 回退，Ctrl+Y 前进）';
+    }
   }
 
   // ============================================================
@@ -7722,9 +7774,12 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
     const btn = $('themeBtn');
     if (!btn) return;
     const use = btn.querySelector('use');
-    const href = theme === 'light' ? '#i-sun' : (theme === 'dark' ? '#i-moon' : (theme === 'frost' ? '#i-frost' : '#i-green'));
-    if (use) use.setAttribute('href', href);
+    const map = { light: '#i-sun', dark: '#i-moon', frost: '#i-frost', green: '#i-green' };
+    const label = { light: '浅色', dark: '深色', frost: '毛玻璃', green: '护眼' };
+    if (use) use.setAttribute('href', map[theme] || '#i-sun');
     else btn.textContent = theme === 'dark' ? '☀️' : (theme === 'frost' ? '❄' : (theme === 'green' ? '🌿' : '🌙'));
+    // 图标-only 按钮本身看不出当前是哪一个主题 → 用悬停提示补上当前值
+    btn.title = '主题：' + (label[theme] || '浅色') + '（点击切换到其它主题）';
   }
 
   function applyTheme(theme) {

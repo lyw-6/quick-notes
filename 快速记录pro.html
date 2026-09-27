@@ -2345,8 +2345,6 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
   border-radius:0; margin-bottom:0; padding:12px 6px;
 }
 .nv-list.detail .nv-item { flex-direction:column; margin-bottom:0; position:relative; }
-/* 详情视图：⋯ 菜单挂卡片右上角（column 布局里它会掉到左下，视觉像正文一部分） */
-.nv-list.detail .nv-more { position:absolute; top:8px; right:8px; }
 .nv-item:hover { background:var(--tool-h); }
 .nv-main { flex:1; min-width:0; }
 .nv-title { font-size:15px; font-weight:600; color:var(--t); display:flex; align-items:center; gap:5px; }
@@ -2358,9 +2356,45 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 .nv-list.detail .nv-excerpt { -webkit-line-clamp:3; }
 .nv-meta { font-size:12px; color:var(--s); margin-top:5px; display:flex; align-items:center; gap:6px; }
 .nv-tag { font-size:11px; padding:1px 7px; border-radius:999px; background:var(--tool); color:var(--s); }
-.nv-more { flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:8px; color:var(--s); }
-.nv-more .ic { width:16px; height:16px; }
-.nv-more:hover { background:var(--tool-h); color:var(--t); }
+/* 长按禁止系统选中 / 长按弹出原生菜单，否则长按进入多选时会先弹系统条 */
+.nv-item { -webkit-touch-callout:none; user-select:none; -webkit-user-select:none; }
+/* ---- 多选模式：左侧勾选圈 ---- */
+.nv-chk {
+  flex:none; width:20px; height:20px; margin-top:2px; border-radius:50%;
+  border:1.5px solid var(--border); background:transparent;
+  display:flex; align-items:center; justify-content:center; color:#fff;
+}
+.nv-item.sel .nv-chk { background:var(--p); border-color:var(--p); }
+.nv-chk .ic { width:13px; height:13px; opacity:0; stroke-width:3; }
+.nv-item.sel .nv-chk .ic { opacity:1; }
+.nv-item.sel { background:color-mix(in srgb, var(--p) 10%, transparent); }
+.nv-list.list .nv-item.sel { border-radius:10px; }
+/* ---- 多选操作条 ---- */
+.nv-selbar {
+  display:none; align-items:center; gap:8px; flex-shrink:0;
+  padding:8px 12px; border-bottom:1px solid var(--border); background:var(--card);
+}
+.nv-selbar.on { display:flex; }
+.nv-sb-x {
+  flex:none; width:30px; height:30px; border-radius:50%; border:none; background:var(--tool-h);
+  color:var(--t); cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.nv-sb-x .ic { width:16px; height:16px; }
+.nv-sb-txt {
+  flex:none; padding:5px 12px; border-radius:999px; font-size:13px;
+  background:var(--ed-bg); border:1px solid var(--border); color:var(--t); cursor:pointer;
+}
+.nv-sb-cnt { flex:1; min-width:0; font-size:13px; color:var(--s); }
+.nv-sb-right { display:flex; align-items:center; gap:4px; flex:none; }
+.nv-sb-ic {
+  width:34px; height:34px; border-radius:10px; border:none; background:transparent;
+  color:var(--t); cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.nv-sb-ic .ic { width:18px; height:18px; }
+.nv-sb-ic:active { background:var(--tool-h); }
+.nv-sb-ic.danger { color:#ff4d4f; }
+/* 多选模式下不显示「新建」——此时在批量操作，新建容易误触 */
+.nv-selbar.on ~ .nv-fab { display:none; }
 .nv-item mark { background:color-mix(in srgb, var(--p) 26%, transparent); color:inherit; border-radius:3px; padding:0 1px; }
 .nv-empty { text-align:center; color:var(--s); font-size:13px; padding:56px 20px; }
 .nv-fab {
@@ -2644,6 +2678,7 @@ html.kb-open body #mainToolbar {
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M5 18l5-5 4 4 3-3 3 3"/></symbol>
     <symbol id="i-backup" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.5-1.5A3.5 3.5 0 0 1 18 18z"/><path d="M12 12v6"/><polyline points="9.5 14.5 12 17 14.5 14.5"/></symbol>
     <symbol id="i-restore" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.5-1.5A3.5 3.5 0 0 1 18 18z"/><path d="M12 18v-6"/><polyline points="9.5 13.5 12 11 14.5 13.5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><polyline points="5 12.5 10 17.5 19 7"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
     <symbol id="i-slash" viewBox="0 0 24 24"><line x1="20" y1="4" x2="4" y2="20"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></symbol>
@@ -2703,6 +2738,17 @@ html.kb-open body #mainToolbar {
     <button class="nv-icon" id="nvViewToggle" type="button" title="切换列表 / 详情视图"><svg class="ic"><use href="#i-grid"/></svg></button>
     <button class="nv-icon" id="nvGroupBtn" type="button" title="分组管理"><svg class="ic"><use href="#i-tpl-mgr"/></svg></button>
     <button class="nv-icon" id="nvModeBtn" type="button" title="切换为标签模式（多标签并排）"><svg class="ic"><use href="#i-tabs"/></svg></button>
+  </div>
+  <div class="nv-selbar" id="nvSelBar">
+    <button class="nv-sb-x" id="nvSelExit" type="button" title="退出多选"><svg class="ic"><use href="#i-close"/></svg></button>
+    <button class="nv-sb-txt" id="nvSelAll" type="button">全选</button>
+    <span class="nv-sb-cnt" id="nvSelCount">已选 0</span>
+    <div class="nv-sb-right">
+      <button class="nv-sb-ic" id="nvSelTop" type="button" title="置顶 / 取消置顶"><svg class="ic"><use href="#i-pin-tab"/></svg></button>
+      <button class="nv-sb-ic" id="nvSelMove" type="button" title="移动分组"><svg class="ic"><use href="#i-tpl-mgr"/></svg></button>
+      <button class="nv-sb-ic" id="nvSelRename" type="button" title="重命名（仅选中 1 条时可用）"><svg class="ic"><use href="#i-edit"/></svg></button>
+      <button class="nv-sb-ic danger" id="nvSelDel" type="button" title="删除"><svg class="ic"><use href="#i-trash"/></svg></button>
+    </div>
   </div>
   <div class="nv-groups" id="nvGroups"></div>
   <div class="nv-list" id="nvList"></div>
@@ -3057,20 +3103,7 @@ html.kb-open body #mainToolbar {
     <div class="link-actions"><button id="nvGroupClose" type="button">关闭</button></div>
   </div>
 </div>
-<!-- 便签模式：单条笔记操作菜单 -->
-<div class="more-overlay" id="nvItemOv">
-  <div class="more-panel" style="max-width:320px">
-    <div class="title" id="nvItemTitle">笔记</div>
-    <div class="link-actions nv-col">
-      <button id="nvItemPin" type="button">置顶</button>
-      <button id="nvItemMove" type="button">移动分组</button>
-      <button id="nvItemRename" type="button">重命名</button>
-      <button id="nvItemDel" type="button" class="danger">删除</button>
-      <button id="nvItemCancel" type="button">取消</button>
-    </div>
-  </div>
-</div>
-<!-- 便签模式：移动分组 -->
+<!-- 便签模式：多选操作条（长按条目进入，支持全选 / 批量置顶 / 移动分组 / 删除） -->
 <div class="more-overlay" id="nvMoveOv">
   <div class="more-panel" style="max-width:320px">
     <div class="title">移动到分组</div>
@@ -3927,7 +3960,10 @@ html.kb-open body #mainToolbar {
   let nvGroup = localStorage.getItem('gw_notes_group') || '';    // '' = 全部
   let nvQuery = '';
   let nvMode = localStorage.getItem('gw_viewmode') || 'tabs';    // tabs | notes
-  let nvItemId = null;
+  let nvSelMode = false;      // 多选模式（长按条目进入）
+  let nvSel = [];             // 已选中的 id
+  let nvSwallowClick = false; // 长按后紧随的补发 click 需吞掉一次
+  let nvSwallowTimer = null;
   let nvRenameTarget = null;   // { kind:'doc'|'group', id, idx }
   let nvGroupEditIdx = -1;
 
@@ -4010,7 +4046,8 @@ html.kb-open body #mainToolbar {
         if (i > 60) ex = '…' + text.slice(i - 40);
       }
       ex = ex.slice(0, 200);
-      h += '<div class="nv-item" data-id="' + id + '">' +
+      h += '<div class="nv-item' + (nvSelMode && nvSel.indexOf(id) >= 0 ? ' sel' : '') + '" data-id="' + id + '">' +
+        (nvSelMode ? '<span class="nv-chk"><svg class="ic"><use href="#i-check"/></svg></span>' : '') +
         '<div class="nv-main">' +
           '<div class="nv-title">' + (d.pinned ? '<svg class="ic nv-pin"><use href="#i-pin-tab"/></svg>' : '') +
             nvMark(d.title || '未命名', q) + '</div>' +
@@ -4018,7 +4055,6 @@ html.kb-open body #mainToolbar {
           '<div class="nv-meta"><span>' + nvFmt(d.ts) + '</span>' +
             (d.group ? '<span class="nv-tag">' + escapeHtml(d.group) + '</span>' : '') + '</div>' +
         '</div>' +
-        '<button class="nv-more" data-more="' + id + '" type="button" title="更多操作"><svg class="ic"><use href="#i-dots"/></svg></button>' +
       '</div>';
     });
     list.innerHTML = h;
@@ -4063,8 +4099,11 @@ html.kb-open body #mainToolbar {
 
   function nvEnterList() {
     saveCurrentDoc();
+    // 从编辑页返回时清掉多选态，避免回到列表还挂着勾选框
+    if (nvSelMode) { nvSelMode = false; nvSel = []; }
     document.body.classList.add('notes-list');
     nvRenderAll();
+    nvSyncSelBar();
   }
 
   function nvOpenNote(id) {
@@ -4170,67 +4209,165 @@ html.kb-open body #mainToolbar {
     nvRenderAll();
   }
 
-  // ---------- 单条笔记操作 ----------
-  function nvOpenItem(id) {
-    nvItemId = id;
-    const t = $('nvItemTitle'), pin = $('nvItemPin');
-    if (t) t.textContent = docs[id] ? (docs[id].title || '未命名') : '笔记';
-    if (pin) pin.textContent = (docs[id] && docs[id].pinned) ? '取消置顶' : '置顶';
-    nvOpenOv('nvItemOv');
-  }
-
-  function nvTogglePin() {
-    const id = nvItemId;
-    if (!id || !docs[id]) return;
-    docs[id].pinned = !docs[id].pinned;
-    saveDocs();
-    nvCloseOv('nvItemOv');
+  // ---------- 多选模式（长按条目进入；列表不再有 ⋯ 按钮） ----------
+  function nvEnterSel(id) {
+    nvSelMode = true;
+    nvSel = id ? [id] : [];
     nvRenderAll();
-    toast(docs[id].pinned ? '已置顶' : '已取消置顶');
+    nvSyncSelBar();
   }
 
-  function nvOpenMove(id) {
-    nvItemId = id;
+  function nvExitSel() {
+    nvSelMode = false; nvSel = [];
+    nvRenderAll();
+    nvSyncSelBar();
+  }
+
+  function nvToggleSel(id) {
+    const i = nvSel.indexOf(id);
+    if (i >= 0) nvSel.splice(i, 1); else nvSel.push(id);
+    nvRenderAll();
+    nvSyncSelBar();
+  }
+
+  // 选中集合里若还有未置顶的，就全部置顶；否则全部取消
+  function nvSelTogglePin() {
+    const ids = nvSel.filter(function(id) { return docs[id]; });
+    if (!ids.length) return;
+    const target = !ids.every(function(id) { return docs[id].pinned; });
+    ids.forEach(function(id) { docs[id].pinned = target; });
+    saveDocs(); nvRenderAll(); nvSyncSelBar();
+    toast(target ? '已置顶 ' + ids.length + ' 条' : '已取消置顶');
+  }
+
+  function nvSelOpenMove() {
     const box = $('nvMoveList');
-    if (!box) return;
+    if (!box || !nvSel.length) return;
     let h = '<button data-mg="" type="button">未分组</button>';
     nvGroups.forEach(function(g) { h += '<button data-mg="' + escapeHtml(g) + '" type="button">' + escapeHtml(g) + '</button>'; });
     box.innerHTML = h;
-    nvCloseOv('nvItemOv');
     nvOpenOv('nvMoveOv');
   }
 
-  function nvMoveTo(g) {
-    const id = nvItemId;
-    if (!id || !docs[id]) return;
-    if (g) docs[id].group = g; else delete docs[id].group;
+  function nvSelMoveTo(g) {
+    const ids = nvSel.slice();
+    ids.forEach(function(id) {
+      if (!docs[id]) return;
+      if (g) docs[id].group = g; else delete docs[id].group;
+    });
     saveDocs();
     nvCloseOv('nvMoveOv');
-    nvRenderAll();
-    toast(g ? '已移动到「' + g + '」' : '已移出分组');
+    nvRenderAll(); nvSyncSelBar();
+    toast('已移动 ' + ids.length + ' 条到「' + (g || '未分组') + '」');
   }
 
-  function nvDelNote() {
-    const id = nvItemId;
-    if (!id || !docs[id]) return;
-    const title = docs[id].title || '未命名';
-    nvCloseOv('nvItemOv');
-    gwConfirm('删除「' + title + '」？可在回收站恢复。', function() {
-      closeDoc(id);
-      nvRenderAll();
-    }, { title: '删除笔记' });
+  function nvSelDel() {
+    const ids = nvSel.slice();
+    if (!ids.length) return;
+    gwConfirm('删除选中的 ' + ids.length + ' 条笔记？可在回收站恢复。', function() {
+      ids.forEach(function(id) { closeDoc(id); });
+      nvSel = []; nvSelMode = false;
+      nvRenderAll(); nvSyncSelBar();
+      toast('已删除 ' + ids.length + ' 条');
+    }, { title: '批量删除' });
+  }
+
+  function nvSelToggleAll() {
+    const ids = nvVisibleIds();
+    nvSel = (nvSel.length === ids.length) ? [] : ids.slice();
+    nvRenderAll();
+    nvSyncSelBar();
+  }
+
+  function nvSyncSelBar() {
+    const bar = $('nvSelBar');
+    if (bar) bar.classList.toggle('on', nvSelMode);
+    const gb = $('nvGroups');
+    if (gb) gb.style.display = nvSelMode ? 'none' : '';
+    const c = $('nvSelCount');
+    if (c) c.textContent = '已选 ' + nvSel.length;
+    const all = $('nvSelAll');
+    if (all) all.textContent = (nvSel.length && nvSel.length === nvVisibleIds().length) ? '取消全选' : '全选';
+    const rn = $('nvSelRename');
+    if (rn) rn.style.display = (nvSel.length === 1) ? '' : 'none';
   }
 
   // ---------- 事件绑定 ----------
   function nvInit() {
     const list = $('nvList');
-    if (list) list.addEventListener('click', function(e) {
-      const t = e.target;
-      const more = t.closest ? t.closest('[data-more]') : null;
-      if (more) { e.stopPropagation(); nvOpenItem(more.getAttribute('data-more')); return; }
-      const item = t.closest ? t.closest('.nv-item') : null;
-      if (item) nvOpenNote(item.getAttribute('data-id'));
-    });
+    if (list) {
+      // 点击：多选模式下切换勾选，否则进编辑器。
+      // nvSwallowClick 只吞掉「长按结束后紧随的那一次补发 click」（否则长按完立刻又进编辑器 / 又取消勾选），
+      // 不能用时间窗——窗口太宽会把用户长按后的第一次真实点击也一起吞掉。
+      list.addEventListener('click', function(e) {
+        if (nvSwallowClick) { nvSwallowClick = false; clearTimeout(nvSwallowTimer); return; }
+        const item = e.target.closest ? e.target.closest('.nv-item') : null;
+        if (!item) return;
+        const id = item.getAttribute('data-id');
+        if (nvSelMode) nvToggleSel(id); else nvOpenNote(id);
+      });
+
+      // 长按进入多选：触摸 450ms；桌面用鼠标长按同阈值 + 右键（contextmenu）兜底
+      let lpTimer = null, lpId = null, lpX = 0, lpY = 0;
+      function lpCancel() { clearTimeout(lpTimer); lpTimer = null; lpId = null; }
+      function lpFire(id) {
+        nvSwallowClick = true;
+        clearTimeout(nvSwallowTimer);
+        nvSwallowTimer = setTimeout(function() { nvSwallowClick = false; }, 400);
+        if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+        if (nvSelMode) nvToggleSel(id); else nvEnterSel(id);
+      }
+      function lpStart(x, y, id) {
+        lpCancel();
+        lpId = id; lpX = x; lpY = y;
+        lpTimer = setTimeout(function() { lpTimer = null; lpFire(lpId); }, 450);
+      }
+      // 手指/鼠标移动超过 8px 视为滚动，取消长按（跟标签拖拽同阈值）
+      function lpMove(x, y) { if (lpTimer && (Math.abs(x - lpX) > 8 || Math.abs(y - lpY) > 8)) lpCancel(); }
+
+      list.addEventListener('touchstart', function(e) {
+        const it = e.target.closest ? e.target.closest('.nv-item') : null;
+        if (!it || !e.touches[0]) return;
+        lpStart(e.touches[0].clientX, e.touches[0].clientY, it.getAttribute('data-id'));
+      }, { passive: true });
+      list.addEventListener('touchmove', function(e) {
+        if (!e.touches[0]) return;
+        lpMove(e.touches[0].clientX, e.touches[0].clientY);
+      }, { passive: true });
+      list.addEventListener('touchend', lpCancel);
+      list.addEventListener('touchcancel', lpCancel);
+      list.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return;
+        const it = e.target.closest ? e.target.closest('.nv-item') : null;
+        if (!it) return;
+        lpStart(e.clientX, e.clientY, it.getAttribute('data-id'));
+      });
+      list.addEventListener('mousemove', function(e) { lpMove(e.clientX, e.clientY); });
+      window.addEventListener('mouseup', lpCancel);
+      list.addEventListener('contextmenu', function(e) {
+        const it = e.target.closest ? e.target.closest('.nv-item') : null;
+        if (!it) return;
+        e.preventDefault();
+        lpFire(it.getAttribute('data-id'));
+      });
+
+      // 多选操作条
+      const sExit = $('nvSelExit');
+      if (sExit) sExit.addEventListener('click', nvExitSel);
+      const sAll = $('nvSelAll');
+      if (sAll) sAll.addEventListener('click', nvSelToggleAll);
+      const sTop = $('nvSelTop');
+      if (sTop) sTop.addEventListener('click', nvSelTogglePin);
+      const sMove = $('nvSelMove');
+      if (sMove) sMove.addEventListener('click', nvSelOpenMove);
+      const sRen = $('nvSelRename');
+      if (sRen) sRen.addEventListener('click', function() {
+        if (nvSel.length !== 1) return;
+        nvOpenRename('doc', docs[nvSel[0]] ? (docs[nvSel[0]].title || '') : '', { id: nvSel[0] });
+      });
+      const sDel = $('nvSelDel');
+      if (sDel) sDel.addEventListener('click', nvSelDel);
+    }
 
     const gb = $('nvGroups');
     if (gb) gb.addEventListener('click', function(e) {
@@ -4292,29 +4429,12 @@ html.kb-open body #mainToolbar {
     const gov = $('nvGroupOv');
     if (gov) gov.addEventListener('click', function(e) { if (e.target === gov) nvCloseOv('nvGroupOv'); });
 
-    // 笔记操作菜单
-    const ipin = $('nvItemPin');
-    if (ipin) ipin.addEventListener('click', nvTogglePin);
-    const imove = $('nvItemMove');
-    if (imove) imove.addEventListener('click', function() { nvOpenMove(nvItemId); });
-    const iren = $('nvItemRename');
-    if (iren) iren.addEventListener('click', function() {
-      nvCloseOv('nvItemOv');
-      nvOpenRename('doc', docs[nvItemId] ? (docs[nvItemId].title || '') : '', { id: nvItemId });
-    });
-    const idel = $('nvItemDel');
-    if (idel) idel.addEventListener('click', nvDelNote);
-    const icancel = $('nvItemCancel');
-    if (icancel) icancel.addEventListener('click', function() { nvCloseOv('nvItemOv'); });
-    const iov = $('nvItemOv');
-    if (iov) iov.addEventListener('click', function(e) { if (e.target === iov) nvCloseOv('nvItemOv'); });
-
-    // 移动分组
+    // 移动分组（多选批量共用同一弹层）
     const mlist = $('nvMoveList');
     if (mlist) mlist.addEventListener('click', function(e) {
       const b = e.target.closest ? e.target.closest('[data-mg]') : null;
       if (!b) return;
-      nvMoveTo(b.getAttribute('data-mg') || '');
+      nvSelMoveTo(b.getAttribute('data-mg') || '');
     });
     const mcancel = $('nvMoveCancel');
     if (mcancel) mcancel.addEventListener('click', function() { nvCloseOv('nvMoveOv'); });

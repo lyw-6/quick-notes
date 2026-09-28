@@ -2413,19 +2413,47 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 .nv-fab:active { transform:scale(.94); }
 
 /* 分组管理 / 笔记操作弹层 */
-.nv-glist { max-height:42vh; overflow-y:auto; margin:6px 0 10px; }
+/* 分组管理：与移动分组弹层同风格（行式列表 + 全套自定义按钮，禁原生样式） */
+#nvGroupOv { align-items:flex-end !important; }
+#nvGroupOv .more-panel { max-width:420px; }
+.nv-glist { max-height:38vh; overflow-y:auto; margin:6px 0 10px; }
 .nv-grow {
-  display:flex; align-items:center; gap:8px; padding:8px 10px; margin-bottom:6px;
-  border-radius:10px; border:1px solid var(--border); background:var(--ed-bg);
+  display:flex; align-items:center; gap:10px; padding:11px 12px; margin-bottom:6px;
+  border-radius:10px; border:none; background:var(--ed-bg);
 }
-.nv-grow .nm { flex:1; min-width:0; font-size:14px; }
-.nv-grow .cnt { font-size:12px; color:var(--s); }
-.nv-grow button { font-size:12px; padding:4px 9px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--t); cursor:pointer; }
+.nv-grow .nm { flex:1; min-width:0; font-size:14px; color:var(--t); }
+.nv-grow .cnt { font-size:12px; color:var(--s); flex:none; }
+.nv-grow .nv-ga {
+  flex:none; width:30px; height:30px; border-radius:8px; border:none; background:transparent;
+  color:var(--s); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  -webkit-appearance:none; appearance:none;
+}
+.nv-grow .nv-ga .ic { width:15px; height:15px; }
+.nv-grow .nv-ga:hover { background:var(--tool-h); color:var(--t); }
+.nv-grow .nv-ga.danger { color:#ff4d4f; }
 .nv-gadd { display:flex; gap:8px; }
 .nv-gadd input {
-  flex:1; min-width:0; padding:7px 10px; border-radius:10px; font:inherit; font-size:14px;
-  border:1px solid var(--border); background:var(--ed-bg); color:var(--t);
+  flex:1; min-width:0; padding:10px 12px; border-radius:10px; font:inherit; font-size:14px;
+  border:1.5px solid var(--border); background:var(--ed-bg); color:var(--t); outline:none;
 }
+.nv-gadd input:focus { border-color:var(--p); }
+.nv-gadd button {
+  flex:none; width:78px; height:44px; border-radius:10px; border:none;
+  background:var(--p); color:#fff; font:inherit; font-size:14px; font-weight:600; cursor:pointer;
+  -webkit-appearance:none; appearance:none;
+}
+.nv-gadd button:hover { background:var(--p-h); }
+.nv-gadd button:active { transform:scale(.97); }
+.nv-gempty {
+  font-size:13px; color:var(--s); text-align:center; padding:16px 12px; margin-bottom:10px;
+  border:1.5px dashed var(--border); border-radius:10px;
+}
+.nv-sheet-close {
+  display:block; width:100%; margin-top:10px; padding:10px; border:none; border-radius:10px;
+  background:transparent; color:var(--s); font:inherit; font-size:14px; cursor:pointer;
+  -webkit-appearance:none; appearance:none;
+}
+.nv-sheet-close:hover { background:var(--tool-h); color:var(--t); }
 .link-actions.nv-col { flex-direction:column; }
 .link-actions.nv-col button { width:100%; }
 /* 移动分组：底部弹层 + 列表行（桌面端保持底部弹出，不做居中卡片） */
@@ -3128,15 +3156,16 @@ html.kb-open body #mainToolbar {
 </div>
 
 <!-- 便签模式：分组管理 -->
+<!-- 便签模式：分组管理（底部弹层，与移动分组同风格） -->
 <div class="more-overlay" id="nvGroupOv">
-  <div class="more-panel" style="max-width:380px">
+  <div class="more-panel nv-move-sheet">
     <div class="title">分组管理</div>
     <div class="nv-glist" id="nvGroupList"></div>
     <div class="nv-gadd">
       <input id="nvGroupInput" type="text" placeholder="新分组名称" maxlength="12">
       <button id="nvGroupAdd" class="primary" type="button">添加</button>
     </div>
-    <div class="link-actions"><button id="nvGroupClose" type="button">关闭</button></div>
+    <button id="nvGroupClose" class="nv-sheet-close" type="button">关闭</button>
   </div>
 </div>
 <!-- 便签模式：多选操作条（长按条目进入，支持全选 / 批量置顶 / 移动分组 / 删除） -->
@@ -4170,15 +4199,15 @@ html.kb-open body #mainToolbar {
     const box = $('nvGroupList');
     if (!box) return;
     if (!nvGroups.length) {
-      box.innerHTML = '<div style="font-size:13px;color:var(--s);padding:6px 2px">还没有分组，在下方输入名称添加</div>';
+      box.innerHTML = '<div class="nv-gempty">还没有分组，在下方输入名称添加</div>';
       return;
     }
     let h = '';
     nvGroups.forEach(function(g, i) {
       const n = Object.keys(docs).filter(function(id) { return (docs[id].group || '') === g; }).length;
       h += '<div class="nv-grow"><span class="nm">' + escapeHtml(g) + '</span><span class="cnt">' + n + ' 篇</span>' +
-        '<button data-grename="' + i + '" type="button">重命名</button>' +
-        '<button data-gdel="' + i + '" type="button">删除</button></div>';
+        '<button class="nv-ga" data-grename="' + i + '" type="button" title="重命名"><svg class="ic"><use href="#i-edit"/></svg></button>' +
+        '<button class="nv-ga danger" data-gdel="' + i + '" type="button" title="删除"><svg class="ic"><use href="#i-trash"/></svg></button></div>';
     });
     box.innerHTML = h;
   }

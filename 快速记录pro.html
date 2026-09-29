@@ -1448,7 +1448,7 @@ body.scroll-dragging { user-select:none; -webkit-user-select:none; }
 
 /* 全屏：左右/底部全出血，但保留顶部状态栏安全区，避免首行与状态栏重叠 */
 body.fullscreen { padding:max(var(--sbh, env(safe-area-inset-top)), 8px) 0 0; max-width:100%; height:100dvh; }
-body.fullscreen header, body.fullscreen .doc-tabs, body.fullscreen .tpl-row, body.fullscreen .bottom-placeholder { display:none !important; }
+body.fullscreen header, body.fullscreen .tabs-row, body.fullscreen .tpl-row, body.fullscreen .bottom-placeholder { display:none !important; }
 body.fullscreen .card { border-radius:0; box-shadow:none; padding:0; flex:1; min-height:0; overflow:visible; }
 body.fullscreen .editor-wrap { flex:1; min-height:0; margin-bottom:0; border-radius:14px; }
 body.fullscreen #ed { border-radius:0; }
@@ -1483,7 +1483,7 @@ body.fullscreen .size-input-popup { z-index:190 !important; }
 }
 @media(min-width:768px) {
   body { height:100dvh; min-height:0; padding:24px 32px; box-sizing:border-box; max-width:960px; }
-  body > header, body > .doc-tabs, body > .tpl-row { flex-shrink:0; }
+  body > header, body > .tabs-row, body > .tpl-row { flex-shrink:0; }
   header h1 { font-size:1.4rem; }
   .view-seg .vs { height:28px; padding:0 11px; font-size:.76rem; }
   .theme-btn { width:36px; height:36px; font-size:1.1rem; }
@@ -1590,7 +1590,7 @@ body.fullscreen .size-input-popup { z-index:190 !important; }
 .seg button:active { transform:scale(.96); }
 #pta:empty::before { content:attr(data-placeholder); color:var(--s); pointer-events:none; }
 body.reading header,
-body.reading .doc-tabs,
+body.reading .tabs-row,
 body.reading .tpl-row,
 body.reading .toolbar,
 body.reading .bottom-placeholder { display:none !important; }
@@ -1676,7 +1676,7 @@ body.line-sel #lineActionBar { display:flex; }
   /* 移动端：light/dark/frost 统一使用直角 bottom sheet；左右留 8px 边距，避免贴边 */
   body { display:flex; flex-direction:column; min-height:100dvh; padding-left:8px; padding-right:8px; padding-bottom:0; box-sizing:border-box; }
   /* header / doc-tabs / 其它顶层子元素保持自然高度，不被 flex 压缩 */
-  body > header, body > .doc-tabs, body > .tpl-row { flex-shrink:0; }
+  body > header, body > .tabs-row, body > .tpl-row { flex-shrink:0; }
   /* 移动端 light/dark：卡片容器与 frost 风格一致（直角、无投影、透明），让整张 bottom sheet 干净 */
   body .card { flex:1; min-height:0; border-radius:0; box-shadow:none; background:transparent; }
 
@@ -2266,7 +2266,7 @@ body.notes-mode.notes-list > .card { display:none !important; }
 /* ⚠️ 便签模式【含编辑态】始终不显示多标签栏：一次只处理一条笔记，
    跟 WPS 便签一致——新建/打开都是单独一条，上方不再有一排其它笔记的标签。
    （列表态那条 notes-list 的选择器已并入上面这条，别再拆回 notes-list） */
-body.notes-mode > .doc-tabs { display:none !important; }
+body.notes-mode > .tabs-row { display:none !important; }
 /* 编辑态标题：多标签栏隐藏后用它在顶栏中部定位当前笔记（左端现在是「标签/便签」分段控件） */
 .nv-ed-title {
   display:none; flex:1; min-width:0; text-align:center;
@@ -2568,6 +2568,49 @@ html.kb-open body #mainToolbar {
 @media (max-width:374px) {
   .view-seg .vs { padding:0 8px; }
   .view-seg .vs .ic { width:14px; height:14px; }
+}
+
+/* ============ 方案A：视图切换常驻「标签栏右端」（紧挨「+」） ============
+   与要切换的那排标签同一行，视线/手指都不用跑；顶栏左端腾空后不再放模式开关。 */
+.tabs-row {
+  display:flex; align-items:center; gap:6px; flex-shrink:0; position:relative;
+  /* 原来 .doc-tabs 的 6px 底部留白挪到这一层：这样行高 == 标签高度，align-items:center
+     才能让右侧胶囊与标签「真居中」（留白留在容器里会让居中基准下移 3px） */
+  padding-bottom:6px;
+}
+/* 标签栏吃掉剩余宽度（内部横向滚动），否则内容宽度会把右端胶囊挤出容器 */
+.tabs-row .doc-tabs { flex:1 1 auto; min-width:0; padding:0 2px; }
+.tabs-pill {
+  display:inline-flex; align-items:center; justify-content:center; gap:5px; flex:none;
+  height:26px; padding:0 11px; border-radius:999px; cursor:pointer;
+  background:color-mix(in srgb, var(--p) 14%, transparent);
+  border:1px solid color-mix(in srgb, var(--p) 42%, transparent);
+  color:var(--p); font:inherit; font-size:.75rem; font-weight:600;
+  white-space:nowrap; transition:background .15s, transform .12s;
+}
+.tabs-pill .ic { width:14px; height:14px; stroke-width:2.2; }
+.tabs-pill:hover { background:color-mix(in srgb, var(--p) 22%, transparent); }
+.tabs-pill:active { transform:scale(.96); }
+[data-theme="frost"] .tabs-pill {
+  background:
+    radial-gradient(120% 130% at 50% -30%, rgba(255,255,255,.95) 0%, rgba(255,255,255,.62) 52%, rgba(255,255,255,.20) 100%),
+    rgba(255,255,255,calc(var(--frost-alpha) * 0.95));
+  border-color:color-mix(in srgb, var(--p) 45%, transparent);
+  color:var(--p);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.90), 0 2px 7px rgba(31,38,135,.10);
+  backdrop-filter:blur(10px) saturate(180%);
+  -webkit-backdrop-filter:blur(10px) saturate(180%);
+}
+/* 顶栏：左端的品牌字已删 → 让右侧按钮组始终贴右（否则 header 只剩一个子元素会被推到左边） */
+header .right { margin-left:auto; }
+/* 分段控件只在「便签模式 + 编辑态」出现：那一刻标签栏被隐藏，顶栏需要一个切回标签的入口 */
+#viewSeg { display:none; }
+body.notes-mode:not(.notes-list) #viewSeg { display:inline-flex; }
+
+@media (max-width:767px) {
+  /* 手机：标签栏右端的胶囊只留文字，给标签让出可见宽度 */
+  .tabs-pill { padding:0 10px; }
+  .tabs-pill .ic { display:none; }
 }
 </style>
 <script>
@@ -2889,7 +2932,12 @@ html.kb-open body #mainToolbar {
   <div class="nv-list" id="nvList"></div>
   <button class="nv-fab" id="nvFab" type="button" title="新建笔记"><svg class="ic"><use href="#i-plus"/></svg></button>
 </div>
-<div class="doc-tabs" id="docTabs"></div>
+<!-- 方案A：标签栏右端常驻「便签」胶囊（与它要切换的那排标签同一行、紧挨「+」）。
+     标签模式下它负责切到便签；便签模式下整条标签栏连同它一起隐藏 -->
+<div class="tabs-row">
+  <div class="doc-tabs" id="docTabs"></div>
+  <button class="tabs-pill" id="viewPill" type="button" title="切换到便签模式（一条一屏，像便签本）"><svg class="ic"><use href="#i-list"/></svg><span>便签</span></button>
+</div>
 <div class="card">
   <!-- 原模板行已移除：模板/阅读等入口移入底部「更多」面板 -->
   <div class="editor-wrap">
@@ -4554,6 +4602,14 @@ html.kb-open body #mainToolbar {
     if (mbtn) mbtn.addEventListener('click', function() { setViewMode('tabs'); });
     const fab = $('nvFab');
     if (fab) fab.addEventListener('click', nvNewNote);
+    // 方案A：标签栏右端常驻胶囊（#viewPill）→ 固定切到便签模式；
+    // 便签模式编辑态顶栏的分段控件（#viewSeg）→ 可双向切
+    const vpill = $('viewPill');
+    if (vpill) vpill.addEventListener('click', function() {
+      if (nvIsNotes()) return;
+      if (typeof hideExpand === 'function') hideExpand();
+      setViewMode('notes');
+    });
     const vsb = $('viewSeg');
     if (vsb) vsb.addEventListener('click', function(e) {
       const b = e.target.closest ? e.target.closest('.vs') : null;

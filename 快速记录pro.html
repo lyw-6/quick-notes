@@ -1485,7 +1485,6 @@ body.fullscreen .size-input-popup { z-index:190 !important; }
   body { height:100dvh; min-height:0; padding:24px 32px; box-sizing:border-box; max-width:960px; }
   body > header, body > .tabs-row, body > .tpl-row { flex-shrink:0; }
   header h1 { font-size:1.4rem; }
-  .view-seg .vs { height:28px; padding:0 11px; font-size:.76rem; }
   .theme-btn { width:36px; height:36px; font-size:1.1rem; }
   .doc-tab { padding:6px 16px; font-size:.9rem; }
   .card { flex:1; min-height:0; padding:0; border-radius:0; box-shadow:none; background:transparent; overflow:hidden; }
@@ -2255,19 +2254,23 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
    ============================================================ */
 #notesView {
   display:none;
-  position:fixed; inset:0; z-index:150;
+  /* 流式填充（原 position:fixed; inset:0; z-index:150）——顶栏要留在列表页上方：
+     它是「标签」模式开关唯一的位置，与标签模式 / 编辑态共用同一条顶栏，位置天然一致 */
+  flex:1; min-height:0;
   background:var(--bg); color:var(--t);
   flex-direction:column;
 }
 body.notes-mode.notes-list #notesView { display:flex; }
-/* 列表态：隐藏原标题栏 / 编辑卡片，全屏只留笔记列表（进入某条笔记后自动恢复） */
-body.notes-mode.notes-list > header,
+/* 列表态：隐藏编辑卡片，只留笔记列表（进入某条笔记后自动恢复）。
+   顶栏保留（承载模式开关），但它上面的编辑动作与笔记标题在列表页没有意义 */
 body.notes-mode.notes-list > .card { display:none !important; }
+body.notes-mode.notes-list header .right,
+body.notes-mode.notes-list header .nv-ed-title { display:none !important; }
 /* ⚠️ 便签模式【含编辑态】始终不显示多标签栏：一次只处理一条笔记，
    跟 WPS 便签一致——新建/打开都是单独一条，上方不再有一排其它笔记的标签。
    （列表态那条 notes-list 的选择器已并入上面这条，别再拆回 notes-list） */
 body.notes-mode > .tabs-row { display:none !important; }
-/* 编辑态标题：多标签栏隐藏后用它在顶栏中部定位当前笔记（左端现在是「标签/便签」分段控件） */
+/* 编辑态标题：多标签栏隐藏后用它在顶栏左端定位当前笔记（中间那枚胶囊是视图开关，别压到它） */
 .nv-ed-title {
   display:none; flex:1; min-width:0; text-align:center;
   font-size:.9rem; font-weight:600; color:var(--t); line-height:1.3;
@@ -2286,7 +2289,8 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 
 .nv-head {
   display:flex; align-items:center; gap:8px; flex-shrink:0;
-  padding:calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+  /* 顶部安全区已由 body 的 padding 承担（列表页不再是 fixed 覆盖层），这里不再重复加 */
+  padding:10px 12px;
   border-bottom:1px solid var(--border); background:var(--card);
 }
 .nv-search {
@@ -2467,7 +2471,7 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 .nv-mv-row.on .ck { opacity:1; }
 .link-actions button.danger { color:#ff4d4f; }
 @media (max-width:768px) {
-  .nv-head { padding:calc(8px + env(safe-area-inset-top, 0px)) 10px 8px; gap:6px; }
+  .nv-head { padding:8px 10px; gap:6px; }
   .nv-icon { width:36px; height:36px; }
   .nv-list.detail { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 }
@@ -2494,93 +2498,13 @@ html.kb-open body #mainToolbar {
   box-shadow:0 -6px 18px rgba(0,0,0,.10);
 }
 
-/* ============ 视图模式切换（原「快记」品牌字的位置，改为「标签 / 便签」分段控件） ============
-   旧方案是顶栏右侧一枚 20px 纯描边图标，夹在「撤销/重做」之间、和字数统计同组，
-   既没有文字也没有底色（不显眼），位置上也把「模式开关」混进了「编辑动作」里。
-   现改为顶栏左端常驻的分段控件：两个模式都写出来，当前模式主色淡底 + 主色细描边。 */
-.view-seg {
-  display:inline-flex; align-items:center; gap:2px; flex:none;
-  padding:2px; border-radius:999px;
-  background:var(--tool-h); border:1px solid var(--border);
-}
-.view-seg .vs {
-  display:inline-flex; align-items:center; justify-content:center; gap:5px;
-  height:26px; padding:0 10px; border:none; background:transparent;
-  border-radius:999px; color:var(--s);
-  font:inherit; font-size:.72rem; line-height:1; cursor:pointer;
-  white-space:nowrap; transition:background .15s, color .15s, box-shadow .15s;
-}
-.view-seg .vs .ic { width:15px; height:15px; stroke-width:2.1; }
-.view-seg .vs:hover { color:var(--t); }
-/* 当前模式：主色淡底 + 主色细描边。★描边必须用 inset 阴影（不能用 border），
-   否则切换时按钮多出 1px 边框 → 两个分段宽度互相挤动，控件会左右抖一下 */
-.view-seg .vs.on {
-  background:color-mix(in srgb, var(--p) 14%, transparent);
-  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--p) 42%, transparent);
-  color:var(--p); font-weight:600;
-}
-.view-seg .vs:active { transform:scale(.96); }
-
-/* 便签模式列表页头部「切回标签」：与分段控件同款语言（图标+文字胶囊、主色淡底） */
-.nv-mode-pill {
-  display:inline-flex; align-items:center; justify-content:center; gap:5px; flex:none;
-  height:38px; padding:0 12px; border-radius:999px; cursor:pointer;
-  background:color-mix(in srgb, var(--p) 14%, transparent);
-  border:1px solid color-mix(in srgb, var(--p) 42%, transparent);
-  color:var(--p); font:inherit; font-size:.78rem; font-weight:600;
-  transition:background .15s, transform .12s;
-}
-.nv-mode-pill .ic { width:16px; height:16px; stroke-width:2.1; }
-.nv-mode-pill:hover { background:color-mix(in srgb, var(--p) 22%, transparent); }
-.nv-mode-pill:active { transform:scale(.96); }
-
-/* frost：分段控件并入顶栏那套液态玻璃（容器玻璃底、当前段更实的白玻璃面） */
-[data-theme="frost"] .view-seg {
-  background:rgba(255,255,255,calc(var(--frost-alpha) * 0.78));
-  border-color:rgba(255,255,255,.55);
-  box-shadow:inset 0 1px 1px rgba(255,255,255,.82), 0 2px 7px rgba(31,38,135,.08);
-  backdrop-filter:blur(10px) saturate(180%);
-  -webkit-backdrop-filter:blur(10px) saturate(180%);
-}
-[data-theme="frost"] .view-seg .vs { color:var(--s); }
-[data-theme="frost"] .view-seg .vs.on {
-  background:
-    radial-gradient(120% 130% at 50% -30%, rgba(255,255,255,.95) 0%, rgba(255,255,255,.62) 52%, rgba(255,255,255,.20) 100%),
-    rgba(255,255,255,.96);
-  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--p) 45%, transparent), inset 0 1px 1px rgba(255,255,255,.96);
-  color:var(--p);
-}
-
-@media (max-width:767px) {
-  /* 手机：分段控件只留文字（图标是次要信息，「标签 / 便签」两个字才是关键），
-     宽度从 ~130px 收到 ~90px —— 顶栏若要同时容纳 分段控件 + 已保存 + 步骤徽标 +
-     撤销/重做/主题（40px 热区、10px 间距），带图标的版本会把「主题」按钮挤出屏幕 */
-  .view-seg { gap:0; }
-  .view-seg .vs { height:28px; padding:0 10px; font-size:.71rem; }
-  .view-seg .vs .ic { display:none; }
-  .nv-mode-pill { height:36px; padding:0 11px; font-size:.75rem; }
-  /* 便签编辑态（手机）：返回 + 标题 + 撤销/重做/主题 + 分段控件同排，
-     这里标题才是主角 → 分段控件改用纯图标（宽 ~70px），把宽度让给中间的笔记标题 */
-  body.notes-mode:not(.notes-list) .view-seg .vs { padding:0 8px; }
-  body.notes-mode:not(.notes-list) .view-seg .vs span { display:none; }
-  body.notes-mode:not(.notes-list) .view-seg .vs .ic { display:block; }
-}
-@media (max-width:374px) {
-  .view-seg .vs { padding:0 8px; }
-  .view-seg .vs .ic { width:14px; height:14px; }
-}
-
-/* ============ 方案A：视图切换常驻「标签栏右端」（紧挨「+」） ============
-   与要切换的那排标签同一行，视线/手指都不用跑；顶栏左端腾空后不再放模式开关。 */
-.tabs-row {
-  display:flex; align-items:center; gap:6px; flex-shrink:0; position:relative;
-  /* 原来 .doc-tabs 的 6px 底部留白挪到这一层：这样行高 == 标签高度，align-items:center
-     才能让右侧胶囊与标签「真居中」（留白留在容器里会让居中基准下移 3px） */
-  padding-bottom:6px;
-}
-/* 标签栏吃掉剩余宽度（内部横向滚动），否则内容宽度会把右端胶囊挤出容器 */
-.tabs-row .doc-tabs { flex:1 1 auto; min-width:0; padding:0 2px; }
-.tabs-pill {
+/* ============ 视图模式开关（方案D：顶栏中央 / 窄屏顶栏最左） ============
+   历史位置：①顶栏右端一枚无字无底色的 20px 图标（夹在撤销/重做之间，不显眼）；
+   ②顶栏左端「标签 / 便签」分段控件；③标签栏右端胶囊（代价是标签可见宽度变少）。
+   现在统一成一枚胶囊放进顶栏 —— 桌面真居中；窄屏退到顶栏最左端。
+   为什么窄屏不居中：手机顶栏的中央是满的（撤销/重做/主题那组 40px 热区 + 步骤徽标，
+   实测右边界到 x=139/390px，便签编辑态到 x=192），绝对居中必然压住撤销和主题按钮。 */
+.view-pill {
   display:inline-flex; align-items:center; justify-content:center; gap:5px; flex:none;
   height:26px; padding:0 11px; border-radius:999px; cursor:pointer;
   background:color-mix(in srgb, var(--p) 14%, transparent);
@@ -2588,30 +2512,49 @@ html.kb-open body #mainToolbar {
   color:var(--p); font:inherit; font-size:.75rem; font-weight:600;
   white-space:nowrap; transition:background .15s, transform .12s;
 }
-.tabs-pill .ic { width:14px; height:14px; stroke-width:2.2; }
-.tabs-pill:hover { background:color-mix(in srgb, var(--p) 22%, transparent); }
-.tabs-pill:active { transform:scale(.96); }
-[data-theme="frost"] .tabs-pill {
+.view-pill .ic { width:14px; height:14px; stroke-width:2.2; }
+.view-pill:hover { background:color-mix(in srgb, var(--p) 22%, transparent); }
+.view-pill:active { transform:scale(.96); }
+
+/* frost：胶囊并入顶栏那套液态玻璃（白玻璃面 + 主色描边，与相邻 icon-btn 同源） */
+[data-theme="frost"] .view-pill {
   background:
     radial-gradient(120% 130% at 50% -30%, rgba(255,255,255,.95) 0%, rgba(255,255,255,.62) 52%, rgba(255,255,255,.20) 100%),
     rgba(255,255,255,calc(var(--frost-alpha) * 0.95));
   border-color:color-mix(in srgb, var(--p) 45%, transparent);
-  color:var(--p);
   box-shadow:inset 0 1px 1px rgba(255,255,255,.90), 0 2px 7px rgba(31,38,135,.10);
   backdrop-filter:blur(10px) saturate(180%);
   -webkit-backdrop-filter:blur(10px) saturate(180%);
 }
-/* 顶栏：左端的品牌字已删 → 让右侧按钮组始终贴右（否则 header 只剩一个子元素会被推到左边） */
-header .right { margin-left:auto; }
-/* 分段控件只在「便签模式 + 编辑态」出现：那一刻标签栏被隐藏，顶栏需要一个切回标签的入口 */
-#viewSeg { display:none; }
-body.notes-mode:not(.notes-list) #viewSeg { display:inline-flex; }
 
-@media (max-width:767px) {
-  /* 手机：标签栏右端的胶囊只留文字，给标签让出可见宽度 */
-  .tabs-pill { padding:0 10px; }
-  .tabs-pill .ic { display:none; }
+@media (max-width:839px) {
+  /* 窄屏：胶囊退到顶栏最左端（中央被右侧工具组占满），高度抬到 30px 方便点按 */
+  .view-pill { height:30px; padding:0 12px; font-size:.78rem; }
 }
+@media (max-width:374px) {
+  .view-pill { padding:0 10px; }
+}
+
+/* ============ 顶栏布局：视图开关「桌面居中 / 窄屏最左」 ============
+   之所以用三列网格而不是绝对定位：绝对定位的 top:50% 是相对 header 的 padding box，
+   而 header 自带 6px 底部留白 → 居中基准会被抬上去 3px，还得手调偏移；
+   网格里胶囊与右侧按钮组共用 align-items:center，垂直对齐天然一致，也不会与右侧组重叠。 */
+header .right { margin-left:auto; }
+@media (min-width:920px) {
+  /* 920px 起中间列才真正居中：此时 body 内容宽 ≥856px，左右 1fr 列各 ≥382px，
+     装得下便签编辑态 369px 的右侧组；再窄就会把它裁掉，所以窄窗口仍走「最左」 */
+  .view-pill { height:28px; padding:0 12px; font-size:.78rem; grid-column:2; grid-row:1; justify-self:center; }
+  header { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; }
+  header .nv-ed-title { grid-column:1; grid-row:1; text-align:left; }
+  header .right { grid-column:3; grid-row:1; justify-self:end; }
+}
+/* 标签栏：视图胶囊已移入顶栏，这里只剩标签本身（保留这一层外壳，就为了承载 6px 底部留白 —— 
+   留白若留在 .doc-tabs 里，未来往这一行加任何东西都会因居中基准下移而对不齐） */
+.tabs-row {
+  display:flex; align-items:center; gap:6px; flex-shrink:0; position:relative;
+  padding-bottom:6px;
+}
+.tabs-row .doc-tabs { flex:1 1 auto; min-width:0; padding:0 2px; }
 </style>
 <script>
 (function(){
@@ -2875,12 +2818,11 @@ body.notes-mode:not(.notes-list) #viewSeg { display:inline-flex; }
   </defs>
 </svg>
 <header>
-  <!-- 视图模式分段控件（取代原「快记」品牌字）：常驻顶栏左端，两个模式都写出来，
-       当前模式主色淡底 —— 比原来右侧那枚无字无底色的图标显眼得多，也不和编辑动作混在一起 -->
-  <div class="view-seg" id="viewSeg" role="group" aria-label="视图模式">
-    <button class="vs" type="button" data-vm="tabs" title="标签模式：多条笔记并排"><svg class="ic"><use href="#i-tabs"/></svg><span>标签</span></button>
-    <button class="vs" type="button" data-vm="notes" title="便签模式：一条一屏，像便签本"><svg class="ic"><use href="#i-list"/></svg><span>便签</span></button>
-  </div>
+  <!-- 视图模式开关（方案D：顶栏中央）。一枚胶囊，图标+文字随当前模式走：
+       标签模式 →「便签」，便签（列表态 / 编辑态）→「标签」。
+       位置：桌面真居中于顶栏；窄屏退到顶栏最左端（手机顶栏中央被右侧 40px 热区占满，实测放不下）。
+       便签列表态复用同一条顶栏 → 三处位置天然一致。 -->
+  <button class="view-pill" id="viewPill" type="button" title="切换到便签模式（一条一屏，像便签本）"><svg class="ic"><use href="#i-list"/></svg><span>便签</span></button>
   <!-- 便签模式编辑态：这里显示当前笔记标题（此时多标签栏是隐藏的，靠它知道在编辑哪一条） -->
   <div class="nv-ed-title" id="nvEdTitle"></div>
   <div class="right">
@@ -2914,8 +2856,7 @@ body.notes-mode:not(.notes-list) #viewSeg { display:inline-flex; }
     </div>
     <button class="nv-icon" id="nvViewToggle" type="button" title="切换列表 / 详情视图"><svg class="ic"><use href="#i-grid"/></svg></button>
     <button class="nv-icon" id="nvGroupBtn" type="button" title="分组管理"><svg class="ic"><use href="#i-folder"/></svg></button>
-    <!-- 切回标签模式：与顶栏分段控件同款（图标+文字胶囊），不再是一枚无语义提示的纯图标钮 -->
-    <button class="nv-mode-pill" id="nvModeBtn" type="button" title="切换为标签模式（多条笔记并排）"><svg class="ic"><use href="#i-tabs"/></svg><span>标签</span></button>
+    <!-- 「切回标签」入口不在这里：列表页上方现在保留了主顶栏，胶囊固定待在顶栏里（三处同一位置） -->
   </div>
   <div class="nv-selbar" id="nvSelBar">
     <button class="nv-sb-x" id="nvSelExit" type="button" title="退出多选"><svg class="ic"><use href="#i-close"/></svg></button>
@@ -2932,11 +2873,9 @@ body.notes-mode:not(.notes-list) #viewSeg { display:inline-flex; }
   <div class="nv-list" id="nvList"></div>
   <button class="nv-fab" id="nvFab" type="button" title="新建笔记"><svg class="ic"><use href="#i-plus"/></svg></button>
 </div>
-<!-- 方案A：标签栏右端常驻「便签」胶囊（与它要切换的那排标签同一行、紧挨「+」）。
-     标签模式下它负责切到便签；便签模式下整条标签栏连同它一起隐藏 -->
+<!-- 标签栏：视图开关已移到顶栏，这里只放标签本身 -->
 <div class="tabs-row">
   <div class="doc-tabs" id="docTabs"></div>
-  <button class="tabs-pill" id="viewPill" type="button" title="切换到便签模式（一条一屏，像便签本）"><svg class="ic"><use href="#i-list"/></svg><span>便签</span></button>
 </div>
 <div class="card">
   <!-- 原模板行已移除：模板/阅读等入口移入底部「更多」面板 -->
@@ -4247,16 +4186,19 @@ body.notes-mode:not(.notes-list) #viewSeg { display:inline-flex; }
 
   function nvRenderAll() { renderNotesGroups(); renderNotes(); }
 
-  // 顶栏「标签 / 便签」分段控件：只负责高亮当前模式（点击绑定走 viewSeg 上的一次性事件委托）
+  // 顶栏视图开关（#viewPill）：一枚胶囊双向切，图标与文案随当前模式走
+  // （标签模式 →「便签」，便签列表/编辑态 →「标签」）
   function nvSyncModeBtn() {
-    const seg = $('viewSeg');
-    if (!seg) return;
-    const cur = nvIsNotes() ? 'notes' : 'tabs';
-    seg.querySelectorAll('.vs').forEach(function(b) {
-      const on = b.getAttribute('data-vm') === cur;
-      b.classList.toggle('on', on);
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
-    });
+    const pill = $('viewPill');
+    if (!pill) return;
+    const notes = nvIsNotes();
+    const use = pill.querySelector('use');
+    if (use) use.setAttribute('href', notes ? '#i-tabs' : '#i-list');
+    const span = pill.querySelector('span');
+    if (span) span.textContent = notes ? '标签' : '便签';
+    const tip = notes ? '切换到标签模式（多条笔记并排）' : '切换到便签模式（一条一屏，像便签本）';
+    pill.title = tip;
+    pill.setAttribute('aria-label', tip);
   }
 
   // 便签模式编辑态：顶栏中间显示当前笔记标题（标签栏已隐藏）
@@ -4598,26 +4540,14 @@ body.notes-mode:not(.notes-list) #viewSeg { display:inline-flex; }
 
     const gbtn = $('nvGroupBtn');
     if (gbtn) gbtn.addEventListener('click', nvOpenGroups);
-    const mbtn = $('nvModeBtn');
-    if (mbtn) mbtn.addEventListener('click', function() { setViewMode('tabs'); });
     const fab = $('nvFab');
     if (fab) fab.addEventListener('click', nvNewNote);
-    // 方案A：标签栏右端常驻胶囊（#viewPill）→ 固定切到便签模式；
-    // 便签模式编辑态顶栏的分段控件（#viewSeg）→ 可双向切
+    // 顶栏视图开关（#viewPill）：一枚胶囊双向切 —— 标签模式 → 便签，便签（列表/编辑）→ 标签
+    // 便签列表页现在也保留同一条顶栏，所以三处共用这一个按钮，位置天然一致
     const vpill = $('viewPill');
     if (vpill) vpill.addEventListener('click', function() {
-      if (nvIsNotes()) return;
       if (typeof hideExpand === 'function') hideExpand();
-      setViewMode('notes');
-    });
-    const vsb = $('viewSeg');
-    if (vsb) vsb.addEventListener('click', function(e) {
-      const b = e.target.closest ? e.target.closest('.vs') : null;
-      if (!b) return;
-      const m = b.getAttribute('data-vm');
-      if (m === (nvIsNotes() ? 'notes' : 'tabs')) return;  // 点当前模式：不重复弹提示
-      if (typeof hideExpand === 'function') hideExpand();
-      setViewMode(m);
+      setViewMode(nvIsNotes() ? 'tabs' : 'notes');
     });
     const back = $('nvBackBtn');
     if (back) back.addEventListener('click', nvEnterList);
@@ -9237,7 +9167,7 @@ body.notes-mode:not(.notes-list) #viewSeg { display:inline-flex; }
     }
     const bgSetBtn = $('bgSetBtn');
     if (bgSetBtn) bgSetBtn.addEventListener('click', function() { hideExpand(); openBgModal(); });
-    // 视图模式总开关在顶栏左端的分段控件（#viewSeg，由 nvInit 绑定），此处不再保留面板入口
+    // 视图模式总开关在顶栏那枚胶囊（#viewPill，由 nvInit 绑定），此处不再保留面板入口
     const closeBgBtn = document.querySelector('#bgModal .close-bg');
     if (closeBgBtn) closeBgBtn.addEventListener('click', closeBgModal);
     const bgModalEl = $('bgModal');

@@ -2296,9 +2296,24 @@ body.notes-mode.notes-list header .nv-ed-title { display:none !important; }
 body.notes-mode > .tabs-row { display:none !important; }
 /* 便签模式两态都不显示字数统计：编辑态左端要让给笔记标题，列表态顶栏只留模式开关 */
 body.notes-mode #wordCount { display:none; }
-/* 编辑态标题：多标签栏隐藏后用它在顶栏左端定位当前笔记（中间那枚胶囊是视图开关，别压到它） */
+/* 顶栏左端分组：字数统计（标签模式）/ 返回键 + 笔记标题（便签编辑态）
+   —— 「‹ 标题」是主流 App（iOS 备忘录 / 微信收藏）的返回形态，返回键必须落在最左角。
+   ⚠️ 默认 flex:none：标签模式与列表态里这组内容都被隐藏，宽度为 0，
+   顶栏布局与改动前完全一致（窄屏那枚模式胶囊仍然停在最左端）；
+   只有「便签编辑态」才让它 flex:1 去吃剩余宽度，把标题撑开。 */
+.h-left { display:flex; align-items:center; gap:6px; min-width:0; flex:none; }
+body.notes-mode:not(.notes-list) .h-left { flex:1 1 auto; }
+/* ⚠️ 便签列表态：左端组一个字都没有 → 整组必须从布局里拿掉，不能只让它「0 宽度留着」。
+   留着会让它成为 flex 首项，顶栏的 space-between 于是把模式胶囊当成中间项、挤到右边
+   （实测手机上从最左 x=10 跑到 x=310）。桌面网格态无影响（胶囊是显式 grid-column:2）。 */
+body.notes-mode.notes-list .h-left { display:none; }
+@media (max-width:767px) {
+  /* 窄屏标签模式：字数统计本来就不显示，左端组同理拿掉 —— 顶栏首项仍是胶囊，位置与改动前一致 */
+  body:not(.notes-mode) .h-left { display:none; }
+}
+/* 编辑态标题：多标签栏隐藏后用它定位当前笔记（紧跟在返回键右边） */
 .nv-ed-title {
-  display:none; flex:1; min-width:0; text-align:center;
+  display:none; flex:1; min-width:0; text-align:left;
   font-size:.9rem; font-weight:600; color:var(--t); line-height:1.3;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
@@ -2308,6 +2323,9 @@ body.notes-mode:not(.notes-list) header { justify-content:flex-start; }
   /* 便签编辑态（手机）：返回+标题+视图开关+撤销/重做+主题已占满 390px，
      「步骤 1/1」徽标让位，否则标题会被挤成一个字 */
   body.notes-mode:not(.notes-list) header .meta { display:none !important; }
+  /* 返回键移到最左后这一排更挤 → 模式胶囊退成纯图标（~38px），宽度让给标题 */
+  body.notes-mode:not(.notes-list) .view-pill { padding:0 10px; }
+  body.notes-mode:not(.notes-list) .view-pill span { display:none; }
 }
 /* 返回按钮只在「便签模式 + 编辑态」出现 */
 #nvBackBtn { display:none; }
@@ -2370,8 +2388,11 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 .nv-list.detail .nv-item { flex-direction:column; margin-bottom:0; position:relative; }
 .nv-item:hover { background:var(--tool-h); }
 .nv-main { flex:1; min-width:0; }
-.nv-title { font-size:15px; font-weight:600; color:var(--t); display:flex; align-items:center; gap:5px; overflow-wrap:anywhere; }
-.nv-title .nv-pin { width:13px; height:13px; color:var(--p); flex:none; }
+/* ⚠️ align-items 必须 flex-start（不是 center）：标题是 flex 容器（图钉与文字同行），
+   当文字超过行数上限被裁时，center 会把溢出「上下各切一半」——首行只露半截并与下一行叠住。
+   flex-start 才是从底部干净裁掉；图钉用 margin-top 单独找回竖直居中（(1.3em-13px)/2 ≈ 3px）。 */
+.nv-title { font-size:15px; font-weight:600; color:var(--t); display:flex; align-items:flex-start; gap:5px; overflow-wrap:anywhere; }
+.nv-title .nv-pin { width:13px; height:13px; color:var(--p); flex:none; margin-top:3px; }
 .nv-excerpt {
   font-size:13px; color:var(--s); margin-top:4px; line-height:1.5;
   overflow:hidden; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical;
@@ -2571,9 +2592,9 @@ header .right { margin-left:auto; }
      装得下便签编辑态 369px 的右侧组；再窄就会把它裁掉，所以窄窗口仍走「最左」 */
   .view-pill { height:28px; padding:0 12px; font-size:.78rem; grid-column:2; grid-row:1; justify-self:center; }
   header { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; }
-  /* 左侧 1fr 列原来空着，正好放字数统计（标签模式）；便签编辑态它被隐藏，左列交还给笔记标题 */
-  header #wordCount { grid-column:1; grid-row:1; justify-self:start; }
-  header .nv-ed-title { grid-column:1; grid-row:1; text-align:left; }
+  /* 左侧 1fr 列原来空着，正好放「字数统计」或「返回键 + 笔记标题」那一组
+     （不设 justify-self:start，让它撑满整列，里面的标题才能用满可用宽度、左对齐显示） */
+  header .h-left { grid-column:1; grid-row:1; min-width:0; }
   header .right { grid-column:3; grid-row:1; justify-self:end; }
 }
 /* 标签栏：视图胶囊已移入顶栏，这里只剩标签本身（保留这一层外壳，就为了承载 6px 底部留白 —— 
@@ -2583,6 +2604,57 @@ header .right { margin-left:auto; }
   padding-bottom:6px;
 }
 .tabs-row .doc-tabs { flex:1 1 auto; min-width:0; padding:0 2px; }
+
+/* ============ 背景设置 · 主题色（强调色） ============
+   一排色块：跟随主题（斜杠）+ 8 个预设 + 自定义（彩虹环）。
+   主色变量 --p / --p-h 写在 html 的内联样式上 —— 内联优先级高于 [data-theme] 里的定义，
+   所以一次选择对四个主题同时生效；清掉内联值就自动回落各主题自带主色（= 跟随主题）。
+   预设色统一挑「白字压得住」的中深色（对比度 ≥ 3.3），避免白字按钮在浅色主色上糊掉。 */
+.ac-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ac-sw {
+  position:relative; width:28px; height:28px; padding:0; flex:none;
+  border-radius:9px; border:1.5px solid var(--border); cursor:pointer;
+  background:var(--tool-h); color:var(--s);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .12s, box-shadow .12s, border-color .12s;
+}
+.ac-sw:hover { transform:translateY(-2px); }
+.ac-sw.on { border-color:var(--p); box-shadow:0 0 0 2px var(--p); }
+.ac-sw .ic { width:15px; height:15px; stroke-width:2.2; }
+.ac-sw.ac-custom {
+  border-color:transparent;
+  background:conic-gradient(from .25turn, #f43f5e, #f59e0b, #22c55e, #06b6d4, #6366f1, #d946ef, #f43f5e);
+}
+.ac-cdot { width:11px; height:11px; border-radius:50%; background:var(--card); box-shadow:0 0 0 1.5px rgba(0,0,0,.10); }
+
+/* ============ 便签卡片：尺寸统一 ============
+   网格态原来靠 grid 的「每行拉伸」对齐 → 只有同一行的卡片等高，行与行之间不等
+   （实测第一行 129px、第二行 109px）；列表态则随标题/摘要行数变化。
+   这里改成固定尺寸：卡片一律 144px 高（= 上内边距 11 + 2 行标题 39 + 3 行摘要 62.5
+   + 时间/分组 19.4 + 下内边距 11），矮内容也撑满、时间与分组永远贴底。 */
+.nv-list.detail .nv-item { height:144px; overflow:hidden; }
+.nv-list.detail .nv-main { display:flex; flex-direction:column; min-height:0; }
+/* 卡片标题最多 2 行（超长标题也撑不破卡片），从底部裁掉 */
+.nv-list.detail .nv-title { flex:none; line-height:1.3; max-height:2.6em; overflow:hidden; }
+.nv-list.detail .nv-excerpt { flex:1 1 auto; min-height:0; }
+.nv-list.detail .nv-meta { margin-top:auto; }
+/* 多选圈在网格态改绝对定位到右上角：它是 flex 子项时会额外占掉一整行高，
+   固定高度下会把卡片撑破 */
+.nv-list.detail .nv-chk { position:absolute; top:9px; right:9px; margin-top:0; }
+.nv-list.detail .nv-item.sel .nv-title { padding-right:24px; }
+/* 列表态：标题与摘要各锁一行 → 行高一致。
+   标题改 block 才吃得到 text-overflow（flex 容器对文字不出省略号，只会硬裁）；
+   图钉随之改成行内块并压低 2px 对齐文字基线（.ic 默认 display:block，不改会独占一行）。 */
+.nv-list.list .nv-item { height:90px; }
+.nv-list.list .nv-title {
+  display:block; line-height:1.3;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.nv-list.list .nv-title .nv-pin { display:inline-block; vertical-align:-2px; margin:0 4px 0 0; }
+@media (min-width:900px) {
+  /* 桌面行内边距更大（上下 14px），行高同步 +4 */
+  .nv-list.list .nv-item { height:94px; }
+}
 </style>
 <script>
 (function(){
@@ -2846,19 +2918,21 @@ header .right { margin-left:auto; }
   </defs>
 </svg>
 <header>
-  <!-- 字数统计：标签模式下放在顶栏最左端（那里原本是空的）。
-       便签模式两态由 CSS 隐藏 —— 手机上这条完整文本约 170px，和胶囊 + 右侧工具组一起会溢出。 -->
-  <span id="wordCount" title="字数 · 段落 · 行数 · 预计阅读时间">0 字 · 0 段 · 0 行 · 1 分钟</span>
+  <!-- 顶栏左端分组（按主流 App 的「‹ 上级」形态）：
+       标签模式 → 只有字数统计；便签编辑态 → 返回键 + 当前笔记标题（靠它知道在编辑哪一条）。
+       桌面宽屏由 grid 放进第 1 列；窄屏靠 DOM 顺序排最左。 -->
+  <div class="h-left">
+    <span id="wordCount" title="字数 · 段落 · 行数 · 预计阅读时间">0 字 · 0 段 · 0 行 · 1 分钟</span>
+    <!-- 便签模式：从笔记进入编辑器后出现的返回按钮（列表态与标签模式下均隐藏） -->
+    <button class="icon-btn" id="nvBackBtn" type="button" title="返回笔记列表"><svg class="ic"><use href="#i-chev-l"/></svg></button>
+    <div class="nv-ed-title" id="nvEdTitle"></div>
+  </div>
   <!-- 视图模式开关（方案D：顶栏中央）。一枚胶囊，图标+文字随当前模式走：
        标签模式 →「便签」，便签（列表态 / 编辑态）→「标签」。
        位置：桌面真居中于顶栏；窄屏退到顶栏最左端（手机顶栏中央被右侧 40px 热区占满，实测放不下）。
        便签列表态复用同一条顶栏 → 三处位置天然一致。 -->
   <button class="view-pill" id="viewPill" type="button" title="切换到便签模式（一条一屏，像便签本）"><svg class="ic"><use href="#i-list"/></svg><span>便签</span></button>
-  <!-- 便签模式编辑态：这里显示当前笔记标题（此时多标签栏是隐藏的，靠它知道在编辑哪一条） -->
-  <div class="nv-ed-title" id="nvEdTitle"></div>
   <div class="right">
-    <!-- 便签模式：从笔记进入编辑器后出现的返回按钮（列表态与标签模式下均隐藏） -->
-    <button class="icon-btn" id="nvBackBtn" type="button" title="返回笔记列表"><svg class="ic"><use href="#i-chev-l"/></svg></button>
     <div class="meta">
       <span id="saveStatus" style="opacity:0">已保存</span>
       <span class="undo-stack-info" id="undoStackInfo" title="历史记录步数：当前位置 / 总步数（Ctrl+Z 回退，Ctrl+Y 前进）">步骤 0/0</span>
@@ -3405,6 +3479,19 @@ header .right { margin-left:auto; }
       <button id="bgResetBtn" type="button" class="g" style="border:1.5px solid var(--border);border-radius:9px;padding:8px 14px;cursor:pointer;font-size:.85rem;font-weight:600">重置</button>
     </div>
     <div class="hint" style="font-size:.74rem;color:var(--s);line-height:1.5">背景适用于「日 / 磨砂」模式（夜间模式不支持背景）；电脑端与移动端通用。上传的图片会保存在本地（localStorage）。</div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--border)">
+      <div class="tx-label">主题色</div>
+      <div class="ac-row" id="acRow" role="group" aria-label="主题色"></div>
+      <div class="tx-custom-pick" id="acColorPick" style="display:none">
+        <div class="tx-hue" id="acHue"><div class="tx-hue-thumb" id="acHueThumb"></div></div>
+        <div class="tx-custom-row">
+          <span class="tx-prev" id="acPrev"></span>
+          <input id="acHex" placeholder="#1677ff" maxlength="7" spellcheck="false">
+          <button class="tx-apply" id="acApply" type="button">应用</button>
+        </div>
+      </div>
+      <div class="hint" style="font-size:.74rem;color:var(--s);line-height:1.5;margin-top:8px">影响按钮、选中标签、开关等强调色，四种主题通用；选「跟随主题」即回到各主题自带主色。</div>
+    </div>
     <div class="frost-only" style="display:none;margin-top:14px;padding-top:14px;border-top:1.5px solid var(--border)">
       <div class="tx-label">磨砂效果（仅磨砂主题）</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap">
@@ -8710,6 +8797,128 @@ header .right { margin-left:auto; }
     root.style.setProperty('--frost-alpha', String(alpha));
   }
 
+  // ---------- 主题色（强调色） ----------
+  // 预设色都挑「白字压得住」的中深色：白字按钮（.tx-apply / .nv-fab / 主色实底）最怕浅主色。
+  const ACCENT_PRESETS = [
+    { name:'标准蓝', hex:'#1677ff' },
+    { name:'紫罗兰', hex:'#7c3aed' },
+    { name:'青碧',   hex:'#0891b2' },
+    { name:'翠绿',   hex:'#059669' },
+    { name:'橙红',   hex:'#ea580c' },
+    { name:'绯红',   hex:'#ef4444' },
+    { name:'玫红',   hex:'#ec4899' },
+    { name:'石墨',   hex:'#64748b' }
+  ];
+  function hexToHsl(hex) {
+    let c = String(hex).replace('#', '');
+    if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+    const r = parseInt(c.substr(0, 2), 16) / 255,
+          g = parseInt(c.substr(2, 2), 16) / 255,
+          b = parseInt(c.substr(4, 2), 16) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    const l = (mx + mn) / 2;
+    let h = 0, s = 0;
+    if (d) {
+      s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn);
+      if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
+      else if (mx === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+    }
+    return [Math.round(h), Math.round(s * 100), Math.round(l * 100)];
+  }
+  function normHex(v) {
+    const c = String(v || '').trim();
+    if (!/^#?[0-9a-fA-F]{6}$/.test(c)) return '';
+    return (c.charAt(0) === '#' ? c : '#' + c).toLowerCase();
+  }
+  // ⚠️ 不能用文件里那个 hslToHex()：它定义在「样式面板绑定」的嵌套作用域里（缩进 4 空格），
+  // 顶层函数取不到 —— 调用会抛 ReferenceError，而 init() 里 applyAccent() 抛出会直接
+  // 中断整个初始化（实测：主色设上了但 --p-h 没设、后续绑定全没绑）。所以这里自带一份。
+  function acHslToHex(h, s, l) {
+    s /= 100; l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const toHex = x => Math.round(255 * x).toString(16).padStart(2, '0');
+    return '#' + toHex(f(0)) + toHex(f(8)) + toHex(f(4));
+  }
+  // 把选定的主色写进 html 内联样式（优先级高于 [data-theme] 里的 --p 定义 → 四主题通吃）；
+  // 未选（或选了「跟随主题」）则移除内联值，自动回落各主题自带主色。
+  function applyAccent() {
+    const root = document.documentElement;
+    let hx = '';
+    try { hx = normHex(localStorage.getItem('gw_accent') || ''); } catch (e) {}
+    try {
+      if (!hx) {
+        root.style.removeProperty('--p');
+        root.style.removeProperty('--p-h');
+        return;
+      }
+      const hsl = hexToHsl(hx);
+      root.style.setProperty('--p', hx);
+      // 悬停色 = 同色相提亮 13%（各主题的 --p-h 都是「更亮」的方向，保持一致）
+      root.style.setProperty('--p-h', acHslToHex(hsl[0], hsl[1], Math.min(96, hsl[2] + 13)));
+    } catch (e) {
+      // 主题色是锦上添花，绝不能因为它的异常把 init() 里后面的初始化全带停掉
+      root.style.removeProperty('--p');
+      root.style.removeProperty('--p-h');
+    }
+  }
+  function setAccent(hex) {
+    const hx = normHex(hex);
+    try {
+      if (hx) localStorage.setItem('gw_accent', hx);
+      else localStorage.removeItem('gw_accent');
+    } catch (e) {}
+    applyAccent();
+    renderAccentSwatches();
+  }
+  function syncAccentPicker(hex) {
+    const hx = normHex(hex) || normHex(localStorage.getItem('gw_accent') || '') || ACCENT_PRESETS[0].hex;
+    const hsl = hexToHsl(hx);
+    const thumb = $('acHueThumb'), prev = $('acPrev'), inp = $('acHex');
+    if (thumb) thumb.style.left = (hsl[0] / 360 * 100) + '%';
+    if (prev) prev.style.background = hx;
+    if (inp) inp.value = hx;
+  }
+  function renderAccentSwatches() {
+    const wrap = $('acRow');
+    if (!wrap) return;
+    const cur = normHex(localStorage.getItem('gw_accent') || '');
+    wrap.innerHTML = '';
+    const add = function(cls, title, bg) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'ac-sw' + (cls ? ' ' + cls : '');
+      b.title = title;
+      if (bg) { b.style.background = bg; b.style.borderColor = 'transparent'; }
+      wrap.appendChild(b);
+      return b;
+    };
+    // 跟随主题（清空覆盖）
+    const fb = add('ac-follow', '跟随主题（各主题自带主色）');
+    fb.innerHTML = '<svg class="ic"><use href="#i-slash"/></svg>';
+    if (!cur) fb.classList.add('on');
+    fb.addEventListener('click', function() { setAccent(''); });
+    // 预设
+    ACCENT_PRESETS.forEach(function(p) {
+      const b = add('', p.name + ' ' + p.hex, p.hex);
+      if (cur === p.hex.toLowerCase()) b.classList.add('on');
+      b.addEventListener('click', function() { setAccent(p.hex); });
+    });
+    // 自定义（展开色相条 + hex 输入）
+    const cw = add('ac-custom', '自定义主题色');
+    cw.innerHTML = '<span class="ac-cdot"></span>';
+    if (cur && !ACCENT_PRESETS.some(function(p) { return p.hex.toLowerCase() === cur; })) cw.classList.add('on');
+    cw.addEventListener('click', function() {
+      const pick = $('acColorPick');
+      if (!pick) return;
+      const show = pick.style.display === 'none';
+      pick.style.display = show ? 'flex' : 'none';
+      if (show) syncAccentPicker(cur);
+    });
+  }
+
   // 背景设置按钮：夜间模式禁用
   function updateBgBtnState() {
     const btn = $('bgSetBtn');
@@ -9205,8 +9414,11 @@ header .right { margin-left:auto; }
       const modal = $('bgModal');
       if (modal) modal.classList.add('on');
       if (bgColorPick) bgColorPick.style.display = 'none';
+      const acPick = $('acColorPick');
+      if (acPick) acPick.style.display = 'none';
       syncBgColorPicker();
       renderBgPresets();
+      renderAccentSwatches();
       updateBgPreview();
       refreshFrostControls();
     }
@@ -9332,6 +9544,54 @@ header .right { margin-left:auto; }
       try { localStorage.setItem('gw_frost_alpha', String(v)); } catch (e) {}
       document.documentElement.style.setProperty('--frost-alpha', String(v / 100));
       const lab = $('frostAlphaVal'); if (lab) lab.textContent = v;
+    });
+
+    // 主题色：预设色块 + 自定义取色（色相条拖动实时生效，和背景取色器行为一致）
+    const acHue = $('acHue'), acHueThumb = $('acHueThumb'), acPrev = $('acPrev'), acHex = $('acHex');
+    function acUpdateFromX(clientX) {
+      if (!acHue) return;
+      const r = acHue.getBoundingClientRect();
+      if (!r.width) return;
+      let pct = (clientX - r.left) / r.width;
+      pct = Math.max(0, Math.min(1, pct));
+      const color = hslToHex(Math.round(pct * 360), 100, 50);
+      if (acHueThumb) acHueThumb.style.left = (pct * 100) + '%';
+      if (acPrev) acPrev.style.background = color;
+      if (acHex) acHex.value = color;
+      setAccent(color);
+    }
+    if (acHue && acHueThumb && acPrev && acHex) {
+      acHue.addEventListener('pointerdown', function(e) {
+        if (acHue.setPointerCapture) { try { acHue.setPointerCapture(e.pointerId); } catch (err) {} }
+        acUpdateFromX(e.clientX);
+        const mv = function(ev) { acUpdateFromX(ev.clientX); };
+        const up = function() { acHue.removeEventListener('pointermove', mv); acHue.removeEventListener('pointerup', up); };
+        acHue.addEventListener('pointermove', mv);
+        acHue.addEventListener('pointerup', up);
+      });
+      acHex.addEventListener('input', function() {
+        const hx = normHex(acHex.value);
+        if (!hx) return;                    // 输入过程中不应用
+        if (acPrev) acPrev.style.background = hx;
+        const hsl = hexToHsl(hx);
+        if (acHueThumb) acHueThumb.style.left = (hsl[0] / 360 * 100) + '%';
+        setAccent(hx);
+      });
+    }
+    const acApply = $('acApply');
+    if (acApply) acApply.addEventListener('click', function() {
+      const hx = normHex(acHex ? acHex.value : '');
+      if (!hx) { toast('颜色格式不正确'); return; }
+      setAccent(hx);
+      toast('已应用主题色');
+    });
+    // 点击自定义取色器与开关以外区域 → 收起
+    const acPickEl = $('acColorPick');
+    if (acPickEl) document.addEventListener('click', function(e) {
+      if (acPickEl.style.display === 'none') return;
+      if (acPickEl.contains(e.target)) return;
+      if (e.target.closest && e.target.closest('.ac-sw')) return;
+      acPickEl.style.display = 'none';
     });
 
     // 文档标签页
@@ -11089,6 +11349,7 @@ header .right { margin-left:auto; }
     document.documentElement.setAttribute('data-theme', theme);
     applyBackground();
     applyFrost();
+    applyAccent();
     updateBgBtnState();
     syncStatusBar();
 

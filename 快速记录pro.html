@@ -290,22 +290,65 @@ header .meta { font-size:.65rem; color:var(--s); display:flex; gap:4px; align-it
   font-weight:600;
 }
 /* 自定义背景（壁纸）下：头部还剩两块信息 —— 字数统计 与 「步骤 1/1」徽标。
-   ⚠️ 原来只给它们加了描边阴影、并把徽标底色剥成 transparent：
-   壁纸是深色时，深色字 + 黑阴影 = 直接糊掉，这正是「有背景时看不清」的根因。
-   改成统一的「半透明深色玻璃药丸 + 白字」—— 药丸自带底色，明暗壁纸上都保持可读。 */
+   ⚠️ 三次演进：
+   ① 最早只给它们加描边阴影、把徽标底色剥成 transparent —— 深色壁纸下深字直接糊掉；
+   ② 改成「半透明深色玻璃药丸 + 白字」—— 深色壁纸上清楚了，但换成明亮彩色壁纸（如「晨雾」）
+      就变成两块深色脏斑，与旁边的白色标签卡片、蓝紫视图胶囊三套配色语言互相打架；
+   ③ 现在统一成一套「半透明白玻璃 + 深色字」。白玻璃自带柔化过渡，彩色壁纸下不脏不抢；
+      壁纸偏深时 66% 白也足够实、深色字照样清楚。同类控件一并跟上，顶栏只剩一种材质语言。 */
 body.bg-custom #wordCount,
 body.bg-custom #undoStackInfo {
-  background:rgba(0,0,0,.44);
-  border:1px solid rgba(255,255,255,.30);
+  background:rgba(255,255,255,.66);
+  border:1px solid rgba(255,255,255,.85);
   border-radius:999px;
   padding:2px 9px;
-  color:#fff;
+  color:#2b3245;
   font-weight:600;
   text-shadow:none;
-  box-shadow:inset 0 1px 1px rgba(255,255,255,.18), 0 1px 3px rgba(0,0,0,.24);
-  backdrop-filter:blur(6px) saturate(140%);
-  -webkit-backdrop-filter:blur(6px) saturate(140%);
+  box-shadow:0 1px 4px rgba(40,50,90,.13), inset 0 1px 1px rgba(255,255,255,.70);
+  backdrop-filter:blur(10px) saturate(180%);
+  -webkit-backdrop-filter:blur(10px) saturate(180%);
 }
+/* 壁纸下顶栏余下控件跟上同一套白玻璃（标签卡片 / 视图胶囊 / 主题圆钮 / 新建钮）。
+   未选中标签的弱化：旧版靠 .62 不透明度做「后退」，白玻璃上会透出壁纸而发灰发紫 ——
+   壁纸下改为不动不透明度，只用底色 .56 ↔ .90 的深浅差来区分选中态。
+   ⚠️ hover 也要一起覆盖：.doc-tab:hover 等基础规则里是 var(--tool-h)（浅灰实色），
+   特异性低于这里的 body.bg-custom 前缀，不补 hover 就会在壁纸下露出灰底。 */
+body.bg-custom .doc-tab {
+  background:rgba(255,255,255,.56);
+  border-color:rgba(255,255,255,.70);
+  color:#2b3245;
+  box-shadow:0 1px 4px rgba(40,50,90,.10);
+  backdrop-filter:blur(12px) saturate(180%);
+  -webkit-backdrop-filter:blur(12px) saturate(180%);
+}
+body.bg-custom .doc-tab:not(.active) { opacity:.92; }
+body.bg-custom .doc-tab:hover { background:rgba(255,255,255,.78); }
+body.bg-custom .doc-tab.active {
+  background:rgba(255,255,255,.90);
+  border-color:color-mix(in srgb, var(--p) 50%, transparent);
+  box-shadow:0 2px 8px rgba(40,50,90,.16);
+}
+body.bg-custom .view-pill {
+  background:rgba(255,255,255,.66);
+  border-color:color-mix(in srgb, var(--p) 48%, transparent);
+  color:color-mix(in srgb, var(--p) 80%, #1b2130);
+  box-shadow:0 1px 4px rgba(40,50,90,.13);
+  backdrop-filter:blur(10px) saturate(180%);
+  -webkit-backdrop-filter:blur(10px) saturate(180%);
+}
+body.bg-custom .view-pill:hover { background:rgba(255,255,255,.84); }
+body.bg-custom .theme-btn,
+body.bg-custom .doc-new {
+  background:rgba(255,255,255,.66);
+  border-color:rgba(255,255,255,.85);
+  box-shadow:0 1px 4px rgba(40,50,90,.13);
+  backdrop-filter:blur(10px) saturate(180%);
+  -webkit-backdrop-filter:blur(10px) saturate(180%);
+}
+body.bg-custom .theme-btn:hover,
+body.bg-custom .doc-new:hover { background:rgba(255,255,255,.86); }
+body.bg-custom .doc-new { box-shadow:0 1px 4px rgba(40,50,90,.13), -8px 0 8px -6px rgba(0,0,0,.14); }
 /* 「已保存」是瞬时提示（平时 opacity:0），只加阴影即可 */
 body.bg-custom header .meta {
   color:var(--t);

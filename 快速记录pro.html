@@ -375,11 +375,13 @@ body.bg-custom header .meta {
   text-shadow:0 1px 2px rgba(0,0,0,.45), 0 0 14px rgba(255,255,255,.22);
 }
 .theme-btn {
-  width:34px;
-  height:34px;
+  /* 2026-10-22：原来 34/36/38px + 实心白圆 + 1.5px 描边，在透明的放大镜/⋯ 图标钮旁边
+     显得又大又重。改成与它们同款的**透明图标钮**（壁纸下仍由 body.bg-custom 规则给白玻璃）。 */
+  width:32px;
+  height:32px;
   border-radius:50%;
-  border:1.5px solid var(--border);
-  background:var(--card);
+  border:none;
+  background:transparent;
   font-size:.85rem;
   cursor:pointer;
   display:flex;
@@ -1574,7 +1576,7 @@ body.fullscreen .size-input-popup { z-index:190 !important; }
   body { height:100dvh; min-height:0; padding:24px 32px; box-sizing:border-box; max-width:960px; }
   body > header, body > .tabs-row, body > .tpl-row { flex-shrink:0; }
   header h1 { font-size:1.4rem; }
-  .theme-btn { width:36px; height:36px; font-size:1.1rem; }
+  .theme-btn { width:32px; height:32px; font-size:1rem; }
   .doc-tab { padding:6px 16px; font-size:.9rem; }
   .card { flex:1; min-height:0; padding:0; border-radius:0; box-shadow:none; background:transparent; overflow:hidden; }
   .tpl-row { margin-bottom:12px; padding-bottom:12px; }
@@ -1921,7 +1923,7 @@ header .meta { display:flex; align-items:center; gap:8px; margin-right:4px; font
        写在前面会被后面的基础规则压掉（曾被此坑过一次）。 */
   header .right { gap:10px; }
   .icon-btn { width:40px; height:40px; }
-  .theme-btn { width:38px; height:38px; }
+  .theme-btn { width:34px; height:34px; }
 }
 .icon-btn .ic { width:20px; height:20px; }
 .close-x {
@@ -1933,7 +1935,7 @@ header .meta { display:flex; align-items:center; gap:8px; margin-right:4px; font
 }
 .close-x:hover { background:var(--tool); border-color:var(--border-s); transform:rotate(90deg); }
 .close-x .ic { width:18px; height:18px; }
-.theme-btn .ic { width:20px; height:20px; }
+.theme-btn .ic { width:17px; height:17px; }
 .ic { width:22px; height:22px; display:block; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 
 /* 隐藏模板行（功能移入「更多」与模板管理器） */
@@ -2564,6 +2566,7 @@ body.notes-mode:not(.notes-list) header { justify-content:flex-start; }
   header { gap:2px; }
   .h-left { gap:3px; }
   header .icon-btn { width:30px; height:30px; }
+  header .theme-btn { width:28px; height:28px; }
   body.notes-mode:not(.notes-list) .view-pill { padding:0 7px; }
   .view-pill { padding:0 9px; gap:4px; }
 }

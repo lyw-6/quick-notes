@@ -2329,10 +2329,16 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
 }
 body.notes-mode.notes-list #notesView { display:flex; }
 /* 列表态：隐藏编辑卡片，只留笔记列表（进入某条笔记后自动恢复）。
-   顶栏保留（承载模式开关），但它上面的编辑动作与笔记标题在列表页没有意义 */
+   顶栏保留（承载模式开关），但它上面的编辑动作与笔记标题在列表页没有意义。
+   ⚠️ 别再整组藏 `.right`：列表页里「步骤 1/1」、撤销/重做确实没意义（下面没有编辑器），
+   但**主题切换按钮要有** —— 壁纸 / 深色主题是在列表页最常想起来要换的东西。
+   所以只逐项隐藏 .meta / #undoBtn / #redoBtn，留下 .theme-wrap（它会靠 .right 的
+   margin-left:auto 自动贴到顶栏右端）。 */
 body.notes-mode.notes-list > .card { display:none !important; }
-body.notes-mode.notes-list header .right,
-body.notes-mode.notes-list header .nv-ed-title { display:none !important; }
+body.notes-mode.notes-list header .nv-ed-title,
+body.notes-mode.notes-list header .right .meta,
+body.notes-mode.notes-list header #undoBtn,
+body.notes-mode.notes-list header #redoBtn { display:none !important; }
 /* ⚠️ 便签模式【含编辑态】始终不显示多标签栏：一次只处理一条笔记，
    跟 WPS 便签一致——新建/打开都是单独一条，上方不再有一排其它笔记的标签。
    （列表态那条 notes-list 的选择器已并入上面这条，别再拆回 notes-list） */
@@ -2378,7 +2384,12 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
   display:flex; align-items:center; gap:8px; flex-shrink:0;
   /* 顶部安全区已由 body 的 padding 承担（列表页不再是 fixed 覆盖层），这里不再重复加 */
   padding:10px 12px;
-  border-bottom:1px solid var(--border); background:var(--card);
+  /* 原来是「白色通栏 + 一条 1px 直角分割线」，底部两个角是尖的，横贯整屏显得很方。
+     改成底部圆角 + 一层柔和投影：白块自己「收边」，不再靠硬线跟下面的分组条硬切。 */
+  border-bottom:none;
+  background:var(--card);
+  border-radius:0 0 18px 18px;
+  box-shadow:0 3px 12px rgba(20,30,60,.07);
 }
 .nv-search {
   flex:1; min-width:0; display:flex; align-items:center; gap:6px;
@@ -2400,7 +2411,8 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 
 .nv-groups {
   display:flex; gap:8px; flex-shrink:0; overflow-x:auto; scrollbar-width:none;
-  padding:10px 12px; border-bottom:1px solid var(--border);
+  /* 同上：分组条与列表之间不再拉一条直角硬线，靠底色差与间距自然分隔 */
+  padding:10px 12px;
 }
 .nv-groups::-webkit-scrollbar { display:none; }
 .nv-chip {

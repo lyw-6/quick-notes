@@ -2346,6 +2346,8 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
   flex:1; min-height:0;
   background:var(--bg); color:var(--t);
   flex-direction:column;
+  /* 新建按钮 / 多选操作条都改成相对本面板定位（absolute），见下方 .nv-fab / .nv-selbar */
+  position:relative;
   /* ★壁纸下这块灰色面板必须是「圆角纸面」，不能是直角矩形：
      标签模式的编辑纸（.editor-wrap，radius 14px）是圆角浮在壁纸上的，
      便签列表页这块灰底同理 —— 直角会在壁纸边缘留下一圈生硬的 90° 灰角。
@@ -2387,6 +2389,16 @@ body.notes-mode.notes-list .h-left { display:none; }
    ⚠️ 必须整组 display:none，不能只让它「0 宽度留着」：那会让它成为 flex 首项，
    顶栏的 space-between 于是把中间的胶囊当成中间项挤到右边（实测手机 x=10 → 310）。 */
 body:not(.notes-mode) .h-left { display:none; }
+/* 桌面宽屏：便签列表页顶栏左端整片空着（字数统计已收进「步骤」徽标），补一条轻信息「7 条 · 1 置顶」。
+   ⚠️ 仍要逐个控制子项 —— 列表态里 .h-left 只有 #nvStats 有内容，
+   返回键 / 笔记标题必须继续隐藏（它们只在便签编辑态出现）。窄屏不加，避免顶栏过挤。 */
+.nv-hd-stats { font-size:.65rem; color:var(--s); line-height:1; white-space:nowrap; }
+#nvStats { display:none; }
+@media (min-width:920px) {
+  body.notes-mode.notes-list .h-left { display:flex; }
+  body.notes-mode.notes-list .h-left > *:not(#nvStats) { display:none !important; }
+  body.notes-mode.notes-list #nvStats { display:inline-block; }
+}
 /* 编辑态标题：多标签栏隐藏后用它定位当前笔记（紧跟在返回键右边） */
 .nv-ed-title {
   display:none; flex:1; min-width:0; text-align:left;
@@ -2473,6 +2485,7 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 .nv-item {
   display:flex; align-items:flex-start; gap:8px; padding:11px 12px; margin-bottom:8px;
   border-radius:12px; background:var(--card); border:1px solid var(--border); cursor:pointer;
+  position:relative;
 }
 .nv-list.list .nv-item {
   background:transparent; border:none; border-bottom:1px solid var(--border);
@@ -2480,7 +2493,20 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 }
 .nv-list.detail .nv-item { flex-direction:column; margin-bottom:0; position:relative; }
 .nv-item:hover { background:var(--tool-h); }
-.nv-main { flex:1; min-width:0; }
+/* ---- 置顶项：必须与普通行/卡片有明确区分（偏好：特殊状态区别于常规项，不能只靠一个图钉图标）----
+   ⚠️ 底色微染 + 左侧主色竖条都画在 ::before 上，**不改 .nv-item 自身的 background**：
+   多选态 `.nv-item.sel` 也是主色底（10%），若把置顶底色写在 item 上会跟它抢优先级，
+   「置顶 + 选中」时必掉一层。竖条用 inset box-shadow，才能跟着 border-radius 一起裁圆角。 */
+.nv-item.pin::before {
+  content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+  background:color-mix(in srgb, var(--p) 7%, transparent);
+  box-shadow:inset 3px 0 0 color-mix(in srgb, var(--p) 72%, transparent);
+}
+.nv-list.detail .nv-item.pin { border-color:color-mix(in srgb, var(--p) 26%, var(--border)); }
+/* 列表视图的通栏行：置顶行给 10px 圆角（与多选选中行同形态），否则整条 tinted 带子看着像一条色块 */
+.nv-list.list .nv-item.pin { border-radius:10px; }
+.nv-item.pin.sel::before { background:color-mix(in srgb, var(--p) 15%, transparent); }
+.nv-main { flex:1; min-width:0; position:relative; }
 /* ⚠️ align-items 必须 flex-start（不是 center）：标题是 flex 容器（图钉与文字同行），
    当文字超过行数上限被裁时，center 会把溢出「上下各切一半」——首行只露半截并与下一行叠住。
    flex-start 才是从底部干净裁掉；图钉用 margin-top 单独找回竖直居中（(1.3em-13px)/2 ≈ 3px）。 */
@@ -2495,6 +2521,10 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 .nv-list.detail .nv-excerpt { -webkit-line-clamp:3; }
 .nv-meta { font-size:12px; color:var(--s); margin-top:5px; display:flex; align-items:center; gap:6px; }
 .nv-tag { font-size:11px; padding:1px 7px; border-radius:999px; background:var(--tool); color:var(--s); }
+/* chip 行里的两种非分组 chip：搜索时的「命中 N」信息块、末尾的「+ 新建分组」入口 */
+.nv-chip.info { border-style:dashed; background:transparent; color:var(--s); cursor:default; align-self:center; }
+.nv-chip.add { border-style:dashed; background:transparent; color:var(--s); }
+.nv-chip.add:hover { border-color:var(--p); color:var(--p); background:color-mix(in srgb, var(--p) 8%, transparent); }
 /* 长按禁止系统选中 / 长按弹出原生菜单，否则长按进入多选时会先弹系统条 */
 .nv-item { -webkit-touch-callout:none; user-select:none; -webkit-user-select:none; }
 /* ---- 多选模式：左侧勾选圈 ---- */
@@ -2508,13 +2538,17 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 .nv-item.sel .nv-chk .ic { opacity:1; }
 .nv-item.sel { background:color-mix(in srgb, var(--p) 10%, transparent); }
 .nv-list.list .nv-item.sel { border-radius:10px; }
-/* ---- 多选操作条：固定底部（对齐 iOS 备忘录 / 微信批量操作的主流形态） ---- */
+/* ---- 多选操作条：纸面内的圆角浮条（不再通栏贴视口） ----
+   ⚠️ 原来是 position:fixed; left:0; right:0 —— 一是满宽直角，与刚统一的圆角纸面语言不一致；
+   二是 body{max-width:960px} 时宽屏（≥1000px）下它会横跨纸面之外 200px。
+   改成 absolute 挂在 #notesView（position:relative）上：各宽度自动贴着纸面。 */
 .nv-selbar {
   display:none; align-items:center; gap:8px;
-  position:fixed; left:0; right:0; bottom:0; z-index:170;
-  padding:10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
-  border-top:1px solid var(--border); background:var(--card);
-  box-shadow:0 -6px 20px rgba(0,0,0,.08);
+  position:absolute; left:10px; right:10px; bottom:8px; z-index:170;
+  margin:0 auto; max-width:560px;
+  padding:8px 10px;
+  border:1px solid var(--border); border-radius:16px; background:var(--card);
+  box-shadow:0 6px 20px rgba(20,30,60,.12);
   animation:slideUp .18s ease;
 }
 .nv-selbar.on { display:flex; }
@@ -2540,8 +2574,19 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 .nv-selbar.on ~ .nv-fab { display:none; }
 .nv-item mark { background:color-mix(in srgb, var(--p) 26%, transparent); color:inherit; border-radius:3px; padding:0 1px; }
 .nv-empty { text-align:center; color:var(--s); font-size:13px; padding:56px 20px; }
+.nv-empty .q { color:var(--t); font-weight:600; }
+.nv-empty-clear {
+  margin-top:14px; padding:7px 16px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--border); background:var(--card); color:var(--t);
+  font:inherit; font-size:13px; font-weight:600;
+}
+.nv-empty-clear:hover { border-color:var(--p); color:var(--p); }
+.nv-empty-clear:active { transform:scale(.97); }
 .nv-fab {
-  position:fixed; right:18px; bottom:calc(22px + env(safe-area-inset-bottom, 0px)); z-index:160;
+  /* ★相对 #notesView 定位：原来是 position:fixed 贴视口，而 body{max-width:960px} ——
+     宽屏（≥1000px）下实测 FAB 落在 x=1208，纸面右缘才 1088，飘到纸面外 120px 处。
+     列表滚动时它仍固定在纸面右下（包含块是 #notesView，不是滚动容器 .nv-list）。 */
+  position:absolute; right:18px; bottom:calc(22px + env(safe-area-inset-bottom, 0px)); z-index:160;
   width:54px; height:54px; border-radius:50%; background:var(--p); color:#fff; border:none;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
   box-shadow:0 8px 22px color-mix(in srgb, var(--p) 40%, transparent);
@@ -3031,6 +3076,8 @@ header .right { margin-left:auto; }
        标签模式 → 只有字数统计；便签编辑态 → 返回键 + 当前笔记标题（靠它知道在编辑哪一条）。
        桌面宽屏由 grid 放进第 1 列；窄屏靠 DOM 顺序排最左。 -->
   <div class="h-left">
+    <!-- 桌面宽屏的便签列表页顶栏左端信息（仅 ≥920px 显示，见 CSS）；窄屏与标签模式不显示 -->
+    <span id="nvStats" class="nv-hd-stats"></span>
     <span id="wordCount" title="字数 · 段落 · 行数 · 预计阅读时间">0 字 · 0 段 · 0 行 · 1 分钟</span>
     <!-- 便签模式：从笔记进入编辑器后出现的返回按钮（列表态与标签模式下均隐藏） -->
     <button class="icon-btn" id="nvBackBtn" type="button" title="返回笔记列表"><svg class="ic"><use href="#i-chev-l"/></svg></button>
@@ -3449,6 +3496,19 @@ header .right { margin-left:auto; }
     <div class="title">移动到分组</div>
     <div class="nv-move-list" id="nvMoveList"></div>
     <div class="link-actions"><button id="nvMoveCancel" type="button">取消</button></div>
+  </div>
+</div>
+<!-- 便签模式：单条笔记操作（编辑态长按标题唤出，零新增顶栏按钮） -->
+<div class="more-overlay" id="nvOpsOv">
+  <div class="more-panel" style="max-width:340px">
+    <div class="title">笔记操作</div>
+    <div class="link-actions nv-col">
+      <button id="nvOpsRename" type="button">重命名</button>
+      <button id="nvOpsMove" type="button">移动到分组</button>
+      <button id="nvOpsPin" type="button">置顶</button>
+      <button id="nvOpsDel" class="danger" type="button">删除</button>
+      <button id="nvOpsCancel" type="button">取消</button>
+    </div>
   </div>
 </div>
 <!-- 便签模式：重命名（笔记 / 分组共用） -->
@@ -4332,6 +4392,8 @@ header .right { margin-left:auto; }
   let nvMode = localStorage.getItem('gw_viewmode') || 'tabs';    // tabs | notes
   let nvSelMode = false;      // 多选模式（长按条目进入）
   let nvSel = [];             // 已选中的 id
+  let nvMoveIds = null;       // 「移动到分组」弹层当前操作的 id 列表（多选批量或单条）
+  let nvOpsId = null;         // 「笔记操作」弹层当前操作的笔记 id
   let nvSwallowClick = false; // 长按后紧随的补发 click 需吞掉一次
   let nvSwallowTimer = null;
   let nvRenameTarget = null;   // { kind:'doc'|'group', id, idx }
@@ -4345,13 +4407,20 @@ header .right { margin-left:auto; }
     return (d.textContent || '').replace(/\s+/g, ' ').trim();
   }
 
+  // 笔记时间戳：今天只显示时分；昨天带「昨天」；今年显示「M月D日」；跨年带年份
+  //（原来昨天与今年更早都退化成 MM-DD，跨天笔记一眼看不出是哪天）
   function nvFmt(ts) {
     const d = new Date(ts || Date.now()), now = new Date();
     const p = function(n) { return n < 10 ? '0' + n : '' + n; };
-    if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate())
-      return p(d.getHours()) + ':' + p(d.getMinutes());
-    if (d.getFullYear() === now.getFullYear()) return p(d.getMonth() + 1) + '-' + p(d.getDate());
-    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    const hm = p(d.getHours()) + ':' + p(d.getMinutes());
+    const sameDay = function(x) {
+      return x.getFullYear() === d.getFullYear() && x.getMonth() === d.getMonth() && x.getDate() === d.getDate();
+    };
+    if (sameDay(now)) return hm;
+    // 用「本地时间减一天」构造昨天，避开跨夏令时/时区时 86400000 毫秒的偏移
+    if (sameDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))) return '昨天 ' + hm;
+    if (d.getFullYear() === now.getFullYear()) return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
   }
 
   // 先 escape 再插 <mark>，避免把用户输入当 HTML 解析
@@ -4382,16 +4451,30 @@ header .right { margin-left:auto; }
   function renderNotesGroups() {
     const box = $('nvGroups');
     if (!box) return;
+    const q = nvQuery.trim().toLowerCase();
+    // ⚠️ 计数必须跟着搜索走：原来不管搜到几条，「全部」chip 永远写总条数（搜「读书」剩 1 条也写「全部 7」）
     const counts = {};
     Object.keys(docs).forEach(function(id) {
+      if (q && ((docs[id].title || '') + ' ' + nvText(docs[id].html)).toLowerCase().indexOf(q) < 0) return;
       const g = docs[id].group || '';
       counts[g] = (counts[g] || 0) + 1;
     });
-    let h = '<button class="nv-chip' + (nvGroup === '' ? ' on' : '') + '" data-g="" type="button">全部<span class="cnt">' + Object.keys(docs).length + '</span></button>';
+    let total = 0;
+    Object.keys(counts).forEach(function(k) { total += counts[k]; });
+    let h = '';
+    if (q) {
+      h += '<span class="nv-chip info">命中 ' + total + '</span>';
+    } else {
+      h += '<button class="nv-chip' + (nvGroup === '' ? ' on' : '') + '" data-g="" type="button">全部<span class="cnt">' + Object.keys(docs).length + '</span></button>';
+    }
     nvGroups.forEach(function(g) {
+      const n = counts[g] || 0;
+      if (q && !n) return;            // 搜索时没有命中的分组不占位
       h += '<button class="nv-chip' + (nvGroup === g ? ' on' : '') + '" data-g="' + escapeHtml(g) + '" type="button">' +
-        escapeHtml(g) + '<span class="cnt">' + (counts[g] || 0) + '</span></button>';
+        escapeHtml(g) + '<span class="cnt">' + n + '</span></button>';
     });
+    // 分组功能原先只有一个 38px 文件夹图标能进，chip 行里再给一个显式入口
+    if (!q) h += '<button class="nv-chip add" data-addgroup="1" type="button">+ 新建分组</button>';
     box.innerHTML = h;
   }
 
@@ -4401,7 +4484,11 @@ header .right { margin-left:auto; }
     const ids = nvVisibleIds();
     list.className = 'nv-list ' + nvView;
     if (!ids.length) {
-      list.innerHTML = '<div class="nv-empty">' + (nvQuery.trim() ? '没有匹配的笔记' : '还没有笔记，点右下角 + 新建') + '</div>';
+      const q0 = nvQuery.trim();
+      list.innerHTML = q0
+        ? '<div class="nv-empty">没有匹配<span class="q">「' + escapeHtml(q0) + '」</span>的笔记' +
+          '<br><button class="nv-empty-clear" type="button">清除搜索</button></div>'
+        : '<div class="nv-empty">还没有笔记，点右下角 + 新建</div>';
       return;
     }
     const q = nvQuery.trim();
@@ -4416,7 +4503,7 @@ header .right { margin-left:auto; }
         if (i > 60) ex = '…' + text.slice(i - 40);
       }
       ex = ex.slice(0, 200);
-      h += '<div class="nv-item' + (nvSelMode && nvSel.indexOf(id) >= 0 ? ' sel' : '') + '" data-id="' + id + '">' +
+      h += '<div class="nv-item' + (d.pinned ? ' pin' : '') + (nvSelMode && nvSel.indexOf(id) >= 0 ? ' sel' : '') + '" data-id="' + id + '">' +
         (nvSelMode ? '<span class="nv-chk"><svg class="ic"><use href="#i-check"/></svg></span>' : '') +
         '<div class="nv-main">' +
           '<div class="nv-title">' + (d.pinned ? '<svg class="ic nv-pin"><use href="#i-pin-tab"/></svg>' : '') +
@@ -4430,7 +4517,17 @@ header .right { margin-left:auto; }
     list.innerHTML = h;
   }
 
-  function nvRenderAll() { renderNotesGroups(); renderNotes(); }
+  function nvRenderAll() { renderNotesGroups(); renderNotes(); nvSyncHdStats(); }
+
+  // 桌面宽屏便签列表页顶栏左端那条「N 条 · M 置顶」（窄屏与标签模式不显示，见 CSS）
+  function nvSyncHdStats() {
+    const el = $('nvStats');
+    if (!el) return;
+    const ids = Object.keys(docs);
+    let pin = 0;
+    ids.forEach(function(id) { if (docs[id] && docs[id].pinned) pin++; });
+    el.textContent = ids.length + ' 条' + (pin ? ' · ' + pin + ' 置顶' : '');
+  }
 
   // 顶栏视图开关（#viewPill）：一枚胶囊双向切，图标与文案随当前模式走
   // （标签模式 →「便签」，便签列表/编辑态 →「标签」）
@@ -4454,6 +4551,40 @@ header .right { margin-left:auto; }
     if (!nvIsNotes() || document.body.classList.contains('notes-list')) return;
     const d = docs[activeId];
     box.textContent = d ? (d.title || '未命名') : '';
+    if (d) box.title = (d.title || '未命名') + '\n长按可重命名 / 移动分组 / 置顶 / 删除';
+  }
+
+  // ---------- 编辑态：长按标题 → 单条笔记操作面板 ----------
+  // 为什么不加顶栏按钮：窄屏顶栏已经是 返回 + 标题 + 胶囊 + 撤销 + 重做 + 主题，
+  // 再插一枚必然溢出（用户明确厌按钮过密）。长按是零占位的方案。
+  function nvOpenOps() {
+    const id = activeId;
+    if (!id || !docs[id]) return;
+    nvOpsId = id;
+    const pin = $('nvOpsPin');
+    if (pin) pin.textContent = docs[id].pinned ? '取消置顶' : '置顶';
+    nvOpenOv('nvOpsOv');
+  }
+
+  function nvOpsTogglePin() {
+    const id = nvOpsId;
+    if (!id || !docs[id]) return;
+    const target = !docs[id].pinned;
+    docs[id].pinned = target;
+    if (target) moveDocToFront(id);      // 与标签模式点图钉一致：置顶后跳到最前
+    saveDocs(); nvRenderAll(); nvSyncEdTitle();
+    toast(target ? '已置顶' : '已取消置顶');
+  }
+
+  function nvOpsDel() {
+    const id = nvOpsId;
+    if (!id || !docs[id]) return;
+    gwConfirm('删除这条笔记？可在回收站恢复。', function() {
+      closeDoc(id);
+      nvOpsId = null;
+      nvEnterList();
+      toast('已删除');
+    }, { title: '删除笔记' });
   }
 
   function applyViewMode() {
@@ -4616,11 +4747,15 @@ header .right { margin-left:auto; }
     toast(target ? '已置顶 ' + ids.length + ' 条' : '已取消置顶');
   }
 
-  function nvSelOpenMove() {
+  function nvSelOpenMove() { nvOpenMoveFor(nvSel.slice()); }
+
+  // 移动分组弹层：目标 id 显式传入 —— 多选批量传 nvSel，单条（编辑态「笔记操作 → 移动到分组」）传 [activeId]
+  function nvOpenMoveFor(ids) {
     const box = $('nvMoveList');
-    if (!box || !nvSel.length) return;
-    // 当前分组：选中条目分组完全一致才打勾，否则不打
-    const gs = nvSel.map(function(id) { return docs[id] ? (docs[id].group || '') : null; });
+    if (!box || !ids.length) return;
+    nvMoveIds = ids.slice();
+    // 当前分组：目标条目分组完全一致才打勾，否则不打
+    const gs = nvMoveIds.map(function(id) { return docs[id] ? (docs[id].group || '') : null; });
     const cur = gs.every(function(g) { return g === gs[0]; }) ? gs[0] : '__mixed__';
     function row(g, name) {
       return '<button class="nv-mv-row' + (cur === g ? ' on' : '') + '" data-mg="' + escapeHtml(g) + '" type="button">' +
@@ -4634,14 +4769,16 @@ header .right { margin-left:auto; }
   }
 
   function nvSelMoveTo(g) {
-    const ids = nvSel.slice();
+    const ids = (nvMoveIds || nvSel).slice();
+    const bulk = nvSelMode;          // 多选态才需要同步勾选条与重绘
     ids.forEach(function(id) {
       if (!docs[id]) return;
       if (g) docs[id].group = g; else delete docs[id].group;
     });
     saveDocs();
+    nvMoveIds = null;
     nvCloseOv('nvMoveOv');
-    nvRenderAll(); nvSyncSelBar();
+    nvRenderAll(); if (bulk) nvSyncSelBar();
     toast('已移动 ' + ids.length + ' 条到「' + (g || '未分组') + '」');
   }
 
@@ -4685,6 +4822,13 @@ header .right { margin-left:auto; }
       // 不能用时间窗——窗口太宽会把用户长按后的第一次真实点击也一起吞掉。
       list.addEventListener('click', function(e) {
         if (nvSwallowClick) { nvSwallowClick = false; clearTimeout(nvSwallowTimer); return; }
+        // 搜索无结果时的「清除搜索」
+        const clr = e.target.closest ? e.target.closest('.nv-empty-clear') : null;
+        if (clr) {
+          const s = $('nvSearch');
+          if (s) { s.value = ''; s.dispatchEvent(new Event('input')); s.focus(); }
+          return;
+        }
         const item = e.target.closest ? e.target.closest('.nv-item') : null;
         if (!item) return;
         const id = item.getAttribute('data-id');
@@ -4751,12 +4895,58 @@ header .right { margin-left:auto; }
       });
       const sDel = $('nvSelDel');
       if (sDel) sDel.addEventListener('click', nvSelDel);
+
+      // ---- 编辑态：长按标题 → 笔记操作面板 ----
+      const opsCancel = $('nvOpsCancel');
+      if (opsCancel) opsCancel.addEventListener('click', function() { nvCloseOv('nvOpsOv'); });
+      const opsOv = $('nvOpsOv');
+      if (opsOv) opsOv.addEventListener('click', function(e) { if (e.target === opsOv) nvCloseOv('nvOpsOv'); });
+      const opsRen = $('nvOpsRename');
+      if (opsRen) opsRen.addEventListener('click', function() {
+        const id = nvOpsId; if (!id || !docs[id]) return;
+        nvCloseOv('nvOpsOv');
+        nvOpenRename('doc', docs[id].title || '', { id: id });
+      });
+      const opsMove = $('nvOpsMove');
+      if (opsMove) opsMove.addEventListener('click', function() {
+        const id = nvOpsId; if (!id || !docs[id]) return;
+        nvCloseOv('nvOpsOv');
+        nvOpenMoveFor([id]);
+      });
+      const opsPin = $('nvOpsPin');
+      if (opsPin) opsPin.addEventListener('click', function() { nvCloseOv('nvOpsOv'); nvOpsTogglePin(); });
+      const opsDel = $('nvOpsDel');
+      if (opsDel) opsDel.addEventListener('click', function() { nvCloseOv('nvOpsOv'); nvOpsDel(); });
+
+      // 长按标题 420ms 唤出；移动 >8px（视为选择文本）或提前抬起都取消；禁掉长按选词与系统菜单
+      const edTitle = $('nvEdTitle');
+      if (edTitle) {
+        let ot = null, osx = 0, osy = 0;
+        edTitle.style.cursor = 'pointer';
+        edTitle.style.userSelect = 'none';
+        edTitle.style.webkitUserSelect = 'none';
+        edTitle.style.touchAction = 'manipulation';
+        edTitle.addEventListener('pointerdown', function(e) {
+          osx = e.clientX; osy = e.clientY;
+          clearTimeout(ot);
+          ot = setTimeout(function() { ot = null; nvOpenOps(); }, 420);
+        });
+        edTitle.addEventListener('pointermove', function(e) {
+          if (ot && (Math.abs(e.clientX - osx) > 8 || Math.abs(e.clientY - osy) > 8)) { clearTimeout(ot); ot = null; }
+        });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(ev) {
+          edTitle.addEventListener(ev, function() { clearTimeout(ot); ot = null; });
+        });
+        edTitle.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+      }
     }
 
     const gb = $('nvGroups');
     if (gb) gb.addEventListener('click', function(e) {
       const c = e.target.closest ? e.target.closest('.nv-chip') : null;
       if (!c) return;
+      if (c.hasAttribute('data-addgroup')) { nvOpenGroups(); return; }
+      if (!c.hasAttribute('data-g')) return;   // 「命中 N」是信息 chip，点了不筛分组
       nvGroup = c.getAttribute('data-g') || '';
       localStorage.setItem('gw_notes_group', nvGroup);
       nvRenderAll();
@@ -4768,7 +4958,7 @@ header .right { margin-left:auto; }
         nvQuery = si.value;
         const box = si.parentNode;
         if (box) box.classList.toggle('has-q', !!nvQuery);
-        renderNotes();
+        nvRenderAll();   // 分组 chip 的「命中 N」要跟着搜索一起刷新
       });
     }
     const sc = $('nvSearchClear');

@@ -264,11 +264,10 @@ header .meta { font-size:.65rem; color:var(--s); display:flex; gap:4px; align-it
 /* 字数统计：标签模式下常驻顶栏最左端（在那儿原本是一片空白）。
    桌面宽屏由 grid 放到第 1 列；窄屏靠 DOM 顺序排在最左。
    便签模式两态隐藏 —— 编辑态左端要让给笔记标题，列表态顶栏只留模式开关 */
-#wordCount {
-  font-size:.65rem; color:var(--s); line-height:1;
-  white-space:nowrap; flex:none;
-  display:inline-block;
-}
+/* 字数统计：不再常驻顶栏 —— 那块位置让给模式胶囊 / 笔记标题，
+   信息改为**长按「步骤 1/1」徽标**弹出（见 .wc-tip）。
+   #wordCount 仍留在 DOM 里当数据容器（updateStats() 照旧往里写），只是不显示。 */
+#wordCount { display:none; }
 .undo-stack-info {
   font-size:.6rem;
   color:var(--s);
@@ -280,7 +279,28 @@ header .meta { font-size:.65rem; color:var(--s); display:flex; gap:4px; align-it
   align-items:center;
   border:1px solid var(--border);
   white-space:nowrap;
+  /* 长按可弹出字数统计：给一个按下反馈，并禁掉长按选词 / 系统长按菜单 */
+  cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:manipulation;
 }
+.undo-stack-info:active { background:var(--dd-h); }
+/* 长按「步骤」徽标 → 弹出的字数统计气泡（替代原来常驻顶栏左端那块文字）。
+   ⚠️ 必须挂在 header 下、不能塞进 .right：.right 有 overflow:hidden，气泡会被裁掉。 */
+.wc-tip {
+  position:absolute; display:none; z-index:260;
+  padding:6px 10px; border-radius:10px;
+  background:color-mix(in srgb, var(--card) 96%, white); border:1px solid var(--border);
+  box-shadow:var(--shadow); color:var(--t);
+  font-size:.72rem; font-weight:600; line-height:1.2; white-space:nowrap;
+  pointer-events:none;   /* 气泡不挡下面的点击 */
+}
+.wc-tip.open { display:block; animation:wcTipIn .14s ease; }
+.wc-tip::before {
+  content:''; position:absolute; top:-5px; right:12px;
+  width:9px; height:9px; background:color-mix(in srgb, var(--card) 96%, white);
+  border-left:1px solid var(--border); border-top:1px solid var(--border);
+  transform:rotate(45deg);
+}
+@keyframes wcTipIn { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }
 /* 绿色护眼主题：--tool-h(#edf6f0) 与 --bg(#eef7f0) 几乎同色，徽标边界消失，
    且 --s 字色仅 3.38:1。单独加深字色/底色/描边，并保证徽标与页头可区分 */
 [data-theme="green"] .undo-stack-info {
@@ -2363,10 +2383,10 @@ body.notes-mode:not(.notes-list) .h-left { flex:1 1 auto; }
    留着会让它成为 flex 首项，顶栏的 space-between 于是把模式胶囊当成中间项、挤到右边
    （实测手机上从最左 x=10 跑到 x=310）。桌面网格态无影响（胶囊是显式 grid-column:2）。 */
 body.notes-mode.notes-list .h-left { display:none; }
-@media (max-width:767px) {
-  /* 窄屏标签模式：字数统计本来就不显示，左端组同理拿掉 —— 顶栏首项仍是胶囊，位置与改动前一致 */
-  body:not(.notes-mode) .h-left { display:none; }
-}
+/* 标签模式：左端组已无可显示内容（字数统计收进「步骤」徽标里了）→ 整组从布局里拿掉。
+   ⚠️ 必须整组 display:none，不能只让它「0 宽度留着」：那会让它成为 flex 首项，
+   顶栏的 space-between 于是把中间的胶囊当成中间项挤到右边（实测手机 x=10 → 310）。 */
+body:not(.notes-mode) .h-left { display:none; }
 /* 编辑态标题：多标签栏隐藏后用它定位当前笔记（紧跟在返回键右边） */
 .nv-ed-title {
   display:none; flex:1; min-width:0; text-align:left;
@@ -3038,6 +3058,9 @@ header .right { margin-left:auto; }
       </div>
     </div>
   </div>
+  <!-- 长按「步骤 1/1」徽标弹出的字数统计（原来常驻顶栏左端那块文字）。
+       必须挂在 header 下、不能塞进 .right —— .right 有 overflow:hidden，气泡会被裁掉 -->
+  <div class="wc-tip" id="wcTip"></div>
 </header>
 <!-- 便签模式：笔记列表（WPS 便签式）。列表态时覆盖全屏，进入某条笔记后隐藏、露出编辑器 -->
 <div id="notesView">
@@ -4897,9 +4920,46 @@ header .right { margin-left:auto; }
     const info = $('undoStackInfo');
     if (info) {
       info.textContent = '步骤 ' + pos + '/' + total;
-      info.title = '历史记录步数：第 ' + pos + ' 步 / 共 ' + total + ' 步（Ctrl+Z 回退，Ctrl+Y 前进）';
+      info.title = '历史记录步数：第 ' + pos + ' 步 / 共 ' + total + ' 步（Ctrl+Z 回退，Ctrl+Y 前进）\n长按查看字数统计';
     }
   }
+
+  // ============================================================
+  // 长按「步骤 1/1」徽标 → 弹出字数统计
+  // 原来「0 字 · 0 段 · 0 行 · 1 分钟」常驻顶栏左端，占掉一整列；现在收进徽标里按需查看。
+  // 用 pointer 事件（触摸/鼠标统一）：按住 420ms 触发，中途抬起或移动 >8px 取消。
+  // ⚠️ 不用 setPointerCapture：它会把后续 click 的 target 重定向，徽标本身没有 click 行为，
+  //    但同一套写法在标签图钉上踩过坑，这里保持不放。
+  // ============================================================
+  (function bindWcTip() {
+    const badge = $('undoStackInfo'), tip = $('wcTip'), hd = document.querySelector('header');
+    if (!badge || !tip || !hd) return;
+    let pressTimer = null, hideTimer = null, sx = 0, sy = 0;
+    function hide() { tip.classList.remove('open'); clearTimeout(hideTimer); hideTimer = null; }
+    function show() {
+      const wc = $('wordCount');
+      const txt = wc && wc.textContent ? wc.textContent.trim() : '';
+      tip.textContent = txt || '0 字 · 0 段 · 0 行 · 1 分钟';
+      tip.classList.add('open');               // 先上屏再量宽度，才能贴住徽标右缘
+      const bb = badge.getBoundingClientRect(), hb = hd.getBoundingClientRect();
+      tip.style.right = Math.max(2, hb.right - bb.right + 4) + 'px';
+      tip.style.top = (bb.bottom - hb.top + 7) + 'px';
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(hide, 3400);
+    }
+    function cancel() { clearTimeout(pressTimer); pressTimer = null; }
+    badge.addEventListener('pointerdown', function(e) {
+      sx = e.clientX; sy = e.clientY; cancel();
+      pressTimer = setTimeout(function() { pressTimer = null; show(); }, 420);
+    });
+    badge.addEventListener('pointermove', function(e) {
+      if (pressTimer && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) cancel();
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(t) { badge.addEventListener(t, cancel); });
+    badge.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+    document.addEventListener('pointerdown', function(e) { if (!badge.contains(e.target)) hide(); }, true);
+    window.addEventListener('resize', hide);
+  })();
 
   // ============================================================
   // 编辑器核心

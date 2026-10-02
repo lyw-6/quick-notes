@@ -2326,6 +2326,13 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
   flex:1; min-height:0;
   background:var(--bg); color:var(--t);
   flex-direction:column;
+  /* ★壁纸下这块灰色面板必须是「圆角纸面」，不能是直角矩形：
+     标签模式的编辑纸（.editor-wrap，radius 14px）是圆角浮在壁纸上的，
+     便签列表页这块灰底同理 —— 直角会在壁纸边缘留下一圈生硬的 90° 灰角。
+     半径取 22px：内置那枚白色搜索卡（外缘内缩 12px、自身圆角 14/16px）与纸面
+     近似同心（22 - 12 = 10 ≈ 14），两层圆弧不会「贴在一起」显得是画错了。
+     底下没有不透明方形子元素压角（搜索卡四面内缩、列表透明），所以不需要 overflow:hidden。 */
+  border-radius:22px 22px 0 0;
 }
 body.notes-mode.notes-list #notesView { display:flex; }
 /* 列表态：隐藏编辑卡片，只留笔记列表（进入某条笔记后自动恢复）。

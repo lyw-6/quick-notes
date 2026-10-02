@@ -815,7 +815,9 @@ body.toolbar-bottom .toolbar { order:5; margin-top:0; margin-bottom:0; border-to
   position:fixed;
   inset:0;
   background:rgba(0,0,0,0.3);
-  z-index:180;
+  /* ⚠️ 270：必须高于便签侧边抽屉(260)，否则从抽屉里叫出来的弹层会被抽屉挡住点不到
+     （Playwright 实测：点「重命名」后 #nvRenameOk 被 <aside id="nvDrawer"> 拦截） */
+  z-index:270;
   display:none;
   align-items:flex-end;
   justify-content:center;
@@ -835,7 +837,7 @@ body.toolbar-bottom .toolbar { order:5; margin-top:0; margin-bottom:0; border-to
 @keyframes panelUp { from { transform:translateY(20px); } to { transform:translateY(0); } }
 .more-panel .title { font-size:.9rem; color:var(--s); margin-bottom:14px; text-align:center; font-weight:500; }
 /* 确认弹窗层级须高于管理器(.md z-index:200)，否则管理器内删除时确认框被压住点不到 */
-#confirmOverlay.more-overlay { align-items:center; z-index:220; }
+#confirmOverlay.more-overlay { align-items:center; z-index:280; }
 #confirmOverlay .more-panel { max-width:360px; border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.25); animation:ddIn .14s ease; }
 .confirm-msg { font-size:.88rem; color:var(--t); line-height:1.6; margin-bottom:16px; text-align:center; }
 .more-panel .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -2381,24 +2383,165 @@ body.notes-mode #wordCount { display:none; }
    只有「便签编辑态」才让它 flex:1 去吃剩余宽度，把标题撑开。 */
 .h-left { display:flex; align-items:center; gap:6px; min-width:0; flex:none; }
 body.notes-mode:not(.notes-list) .h-left { flex:1 1 auto; }
-/* ⚠️ 便签列表态：左端组一个字都没有 → 整组必须从布局里拿掉，不能只让它「0 宽度留着」。
-   留着会让它成为 flex 首项，顶栏的 space-between 于是把模式胶囊当成中间项、挤到右边
-   （实测手机上从最左 x=10 跑到 x=310）。桌面网格态无影响（胶囊是显式 grid-column:2）。 */
-body.notes-mode.notes-list .h-left { display:none; }
-/* 标签模式：左端组已无可显示内容（字数统计收进「步骤」徽标里了）→ 整组从布局里拿掉。
-   ⚠️ 必须整组 display:none，不能只让它「0 宽度留着」：那会让它成为 flex 首项，
-   顶栏的 space-between 于是把中间的胶囊当成中间项挤到右边（实测手机 x=10 → 310）。 */
+/* 便签列表态的左端组不再是空的 —— 里面装着抽屉按钮（#nvMenuBtn），所以**不能**整组 display:none。
+   那条「空组必须拿掉」的规矩只对「标签模式」成立：那里左端确实一个字都没有，
+   留着 0 宽度会让它成为 flex 首项，顶栏 space-between 把中间的胶囊挤到右边（实测 x=10 → 310）。 */
 body:not(.notes-mode) .h-left { display:none; }
-/* 桌面宽屏：便签列表页顶栏左端整片空着（字数统计已收进「步骤」徽标），补一条轻信息「7 条 · 1 置顶」。
-   ⚠️ 仍要逐个控制子项 —— 列表态里 .h-left 只有 #nvStats 有内容，
-   返回键 / 笔记标题必须继续隐藏（它们只在便签编辑态出现）。窄屏不加，避免顶栏过挤。 */
-.nv-hd-stats { font-size:.65rem; color:var(--s); line-height:1; white-space:nowrap; }
-#nvStats { display:none; }
-@media (min-width:920px) {
-  body.notes-mode.notes-list .h-left { display:flex; }
-  body.notes-mode.notes-list .h-left > *:not(#nvStats) { display:none !important; }
-  body.notes-mode.notes-list #nvStats { display:inline-block; }
+/* 便签模式两态的顶栏左端现在是「抽屉按钮（+ 编辑态的返回键与标题）」，真的有内容，
+   不再是「空组占位」——那才是必须整组 display:none 的情形（见上面那条）。 */
+/* 顶栏两枚便签专属按钮：抽屉（两态都显示）、搜索 + ⋯（仅列表态，编辑态没有列表可搜/可排） */
+#nvMenuBtn { display:none; }
+body.notes-mode #nvMenuBtn { display:inline-flex; }
+.icon-btn.nv-list-only { display:none; }
+body.notes-mode.notes-list .icon-btn.nv-list-only { display:inline-flex; }
+
+/* ---- 顶栏搜索框：点放大镜后**原地顶掉视图胶囊**，不新增一行搜索栏 ----
+   与胶囊占同一格：窄屏靠 flex:1 吃满中间，≥920px 靠 grid-column:2 与胶囊同格居中。 */
+.hd-search {
+  display:none; align-items:center; gap:6px; min-width:0;
+  height:30px; padding:0 4px 0 10px; border-radius:999px;
+  background:var(--ed-bg); border:1px solid var(--border);
 }
+.hd-search > .ic { width:15px; height:15px; color:var(--s); flex:none; }
+.hd-search input { flex:1; min-width:0; border:none; background:transparent; color:var(--t); font:inherit; font-size:14px; outline:none; }
+.hd-search input::placeholder { color:var(--s); }
+#hdSearchExit {
+  flex:none; width:24px; height:24px; border:none; background:transparent; color:var(--s);
+  cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%;
+}
+#hdSearchExit:hover { background:var(--tool-h); }
+#hdSearchExit .ic { width:14px; height:14px; }
+body.nv-searching .view-pill { display:none !important; }
+body.nv-searching .hd-search { display:flex; }
+body.nv-searching #nvSearchBtn { display:none !important; }
+@media (max-width:919px) { .hd-search { flex:1 1 auto; } }
+@media (min-width:920px) { .hd-search { grid-column:2; grid-row:1; justify-self:center; width:min(420px, 100%); } }
+
+/* ---- 顶栏「⋯」下拉（视图 / 排序） ---- */
+.nv-more-dd {
+  position:fixed; display:none; flex-direction:column; gap:2px; min-width:168px; padding:6px;
+  border-radius:12px; z-index:200;
+  background:color-mix(in srgb, var(--card) 96%, white); border:1px solid var(--border); box-shadow:var(--shadow);
+}
+.nv-more-dd.open { display:flex; }
+.nv-dd-h { font-size:11px; color:var(--s); padding:5px 8px 3px; }
+.nv-dd-sep { height:1px; background:var(--border); margin:4px 6px; }
+.nv-more-dd button {
+  display:flex; align-items:center; gap:8px; padding:8px 8px; border-radius:8px;
+  border:none; background:transparent; color:var(--t); font:inherit; font-size:.85rem; cursor:pointer; text-align:left;
+}
+.nv-more-dd button:hover { background:var(--tool-h); }
+.nv-more-dd button .ic { width:16px; height:16px; color:var(--s); flex:none; }
+.nv-more-dd button span { flex:1; }
+.nv-more-dd button .ck { width:14px; height:14px; color:var(--p); opacity:0; stroke-width:3; flex:none; }
+.nv-more-dd button.on .ck { opacity:1; }
+.nv-more-dd button.on { color:var(--p); font-weight:600; }
+
+/* ---- 便签模式侧边抽屉（分组增/改/删 + 回收站） ---- */
+.nv-dr-ov {
+  position:fixed; inset:0; z-index:260; display:none;   /* ⚠️ 必须高于 header(250)，
+     否则抽屉自己的标题行会被顶栏压住（实测「菜单」两个字被胶囊盖掉） */
+  background:rgba(15,23,42,.34); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+}
+.nv-dr-ov.on { display:block; }
+.nv-drawer {
+  position:absolute; left:0; top:0; bottom:0; width:min(80vw, 300px);
+  display:flex; flex-direction:column; gap:6px; overflow-y:auto;
+  padding:14px 12px calc(18px + env(safe-area-inset-bottom, 0px));
+  background:var(--card); border-right:1px solid var(--border);
+  box-shadow:8px 0 28px rgba(15,23,42,.16);
+  animation:slideRight .2s ease;
+}
+@keyframes slideRight { from { transform:translateX(-14px); opacity:.4; } to { transform:none; opacity:1; } }
+.nv-dr-head { display:flex; align-items:center; justify-content:space-between; padding:2px 4px 8px; }
+.nv-dr-title { font-size:.95rem; font-weight:700; color:var(--t); }
+.nv-dr-x {
+  width:30px; height:30px; border-radius:50%; border:none; background:var(--tool-h);
+  color:var(--t); cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.nv-dr-x .ic { width:15px; height:15px; }
+.nv-dr-sec { display:flex; flex-direction:column; gap:6px; }
+.nv-dr-h { font-size:11px; color:var(--s); padding:6px 6px 2px; font-weight:600; }
+.nv-dr-list { display:flex; flex-direction:column; gap:4px; }
+.nv-dr-row {
+  display:flex; align-items:center; gap:9px; width:100%; padding:10px 10px; border-radius:10px;
+  border:none; background:var(--ed-bg); color:var(--t); font:inherit; font-size:.85rem; cursor:pointer; text-align:left;
+}
+.nv-dr-row .ic { width:16px; height:16px; color:var(--s); flex:none; }
+.nv-dr-row .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nv-dr-row .cnt { font-size:11px; color:var(--s); flex:none; }
+.nv-dr-row.on { background:color-mix(in srgb, var(--p) 14%, transparent); color:var(--p); font-weight:600; }
+.nv-dr-row.on .ic, .nv-dr-row.on .cnt { color:var(--p); }
+.nv-dr-act { display:flex; gap:2px; flex:none; }
+.nv-dr-act button {
+  width:26px; height:26px; border-radius:7px; border:none; background:transparent; color:var(--s);
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.nv-dr-act button:hover { background:var(--tool-h); color:var(--t); }
+.nv-dr-act button.del:hover { color:#ff4d4f; }
+.nv-dr-act .ic { width:14px; height:14px; }
+.nv-dr-add {
+  display:flex; align-items:center; justify-content:center; gap:6px; width:100%; padding:9px;
+  border-radius:10px; border:1px dashed var(--border-s); background:transparent; color:var(--s);
+  font:inherit; font-size:.82rem; cursor:pointer;
+}
+.nv-dr-add:hover { border-color:var(--p); color:var(--p); }
+.nv-dr-add .ic { width:14px; height:14px; }
+.nv-dr-empty { font-size:.78rem; color:var(--s); padding:4px 8px 8px; }
+/* 回收站：不用「其他」分类，margin-top:auto 把它压到抽屉最底部 */
+.nv-dr-bin { margin-top:auto; }
+.nv-dr-bin .cnt { min-width:20px; text-align:center; padding:1px 6px; border-radius:999px; background:var(--tool-h); }
+
+/* ---- 便签回收站独立页面 ---- */
+.nv-bin-page {
+  position:fixed; inset:0; z-index:265; display:none; flex-direction:column;
+  background:var(--bg); color:var(--t);
+}
+.nv-bin-page.on { display:flex; }
+.nv-bin-head {
+  display:flex; align-items:center; gap:8px; flex:none;
+  padding:max(env(safe-area-inset-top),10px) 12px 10px;
+  border-bottom:1px solid var(--border); background:var(--card);
+}
+.nv-bin-title { flex:1; min-width:0; font-size:1rem; font-weight:700; }
+.nv-bin-clear {
+  flex:none; padding:6px 12px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--border); background:var(--tool-h); color:var(--t); font:inherit; font-size:.78rem; font-weight:600;
+}
+.nv-bin-clear:hover { border-color:#ff4d4f; color:#ff4d4f; }
+.nv-bin-list { flex:1; min-height:0; overflow-y:auto; padding:12px 12px calc(24px + env(safe-area-inset-bottom, 0px)); }
+.nv-bin-row {
+  display:flex; align-items:flex-start; gap:10px; margin-bottom:8px; padding:11px 12px;
+  border-radius:12px; background:var(--card); border:1px solid var(--border);
+}
+.nv-bin-main { flex:1; min-width:0; }
+.nv-bin-t { font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nv-bin-e {
+  font-size:12px; color:var(--s); margin-top:3px; line-height:1.45;
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere;
+}
+.nv-bin-m { font-size:11px; color:var(--s); margin-top:4px; }
+.nv-bin-act { display:flex; flex-direction:column; gap:6px; flex:none; }
+.nv-bin-act button {
+  padding:5px 10px; border-radius:8px; cursor:pointer; white-space:nowrap;
+  border:1px solid var(--border); background:var(--tool-h); color:var(--t); font:inherit; font-size:.75rem; font-weight:600;
+}
+.nv-bin-act button:hover { border-color:var(--p); color:var(--p); }
+.nv-bin-act button.danger { color:#ff4d4f; }
+.nv-bin-act button.danger:hover { border-color:#ff4d4f; }
+.nv-bin-empty { text-align:center; color:var(--s); font-size:13px; padding:64px 20px; }
+.nv-bin-empty span { font-size:12px; opacity:.8; }
+
+/* ---- 列表分区标题：「置顶」/「最近」两个区域（不再靠色条区分置顶） ---- */
+.nv-sec {
+  display:flex; align-items:center; gap:6px;
+  font-size:11.5px; font-weight:700; color:var(--s); letter-spacing:.02em;
+  padding:10px 6px 6px;
+}
+.nv-sec .ic { width:12px; height:12px; color:var(--s); }
+.nv-sec .n { font-weight:500; opacity:.75; }
+.nv-list.list .nv-sec { padding:12px 6px 4px; }
+.nv-list.detail .nv-sec { grid-column:1 / -1; padding:12px 2px 2px; }
 /* 编辑态标题：多标签栏隐藏后用它定位当前笔记（紧跟在返回键右边） */
 .nv-ed-title {
   display:none; flex:1; min-width:0; text-align:left;
@@ -2415,49 +2558,24 @@ body.notes-mode:not(.notes-list) header { justify-content:flex-start; }
   body.notes-mode:not(.notes-list) .view-pill { padding:0 10px; }
   body.notes-mode:not(.notes-list) .view-pill span { display:none; }
 }
+@media (max-width:375px) {
+  /* 极窄屏：便签编辑态顶栏有 ☰ + ‹ + 标题 + 胶囊 + 撤销/重做/主题 共六件，
+     375px 以下标题只剩 66px（被挤成三四个字）。收窄按钮与间距，把标题让回 ~100px。 */
+  header { gap:2px; }
+  .h-left { gap:3px; }
+  header .icon-btn { width:30px; height:30px; }
+  body.notes-mode:not(.notes-list) .view-pill { padding:0 7px; }
+  .view-pill { padding:0 9px; gap:4px; }
+}
 /* 返回按钮只在「便签模式 + 编辑态」出现 */
 #nvBackBtn { display:none; }
 body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 
-/* ⚠️ 别再用「通栏白条 + 只把下两角改圆角」——白(--card #fff) 与页面底色(--bg #f0f2f5)
-   只差 6%，圆角处露出的就是几乎同色的底，视觉上完全看不出弧线，仍然是一条直角横线
-   （上一版就是这么翻车的）。这里让卡片**四面都收进来**：左右各留 12px、上下各留 4~6px
-   露出底色，再加 1px 描边（与笔记卡同款）——「这是一张圆角卡」的形状才立得住。
-   结构上用 ::before 画卡而不是给 .nv-head 加 margin：margin 会把内容整体推右，
-   破坏下面「搜索框 / 分组 chip / 笔记卡」三者的左边缘对齐（实测差 12px）。 */
-.nv-head {
-  position:relative; z-index:0;
-  display:flex; align-items:center; gap:8px; flex-shrink:0;
-  /* 顶部安全区已由 body 的 padding 承担（列表页不再是 fixed 覆盖层），这里不再重复加。
-     24px = 卡片内缩 12px + 卡片自身内边距 12px */
-  padding:12px 24px 14px;
-  background:transparent;
-}
-.nv-head::before {
-  content:''; position:absolute; z-index:-1;
-  inset:4px 12px 6px;
-  border-radius:16px;
-  background:var(--card);
-  border:1px solid var(--border);
-  box-shadow:0 4px 14px rgba(20,30,60,.10);
-}
-.nv-search {
-  flex:1; min-width:0; display:flex; align-items:center; gap:6px;
-  height:38px; padding:0 10px; border-radius:999px;
-  background:var(--ed-bg); border:1px solid var(--border);
-}
-.nv-search > .ic { width:16px; height:16px; color:var(--s); flex:none; }
-.nv-search input { flex:1; min-width:0; border:none; background:transparent; color:var(--t); font:inherit; font-size:14px; outline:none; }
-.nv-search input::placeholder { color:var(--s); }
-#nvSearchClear { display:none; border:none; background:transparent; cursor:pointer; padding:2px; }
-#nvSearchClear .ic { width:14px; height:14px; color:var(--s); }
-.nv-search.has-q #nvSearchClear { display:flex; align-items:center; justify-content:center; }
-.nv-icon {
-  width:38px; height:38px; flex:none; display:flex; align-items:center; justify-content:center;
-  border-radius:12px; background:var(--ed-bg); border:1px solid var(--border); color:var(--t); cursor:pointer;
-}
-.nv-icon .ic { width:18px; height:18px; }
-.nv-icon:active { background:var(--tool-h); }
+/* ⚠️ 原先这里有一整块「.nv-head 圆角浮卡 + .nv-search 搜索框 + .nv-icon 图标钮」的样式，
+   随 2026-10-22 的顶栏重构一起删掉了（搜索框搬进顶栏、视图/分组按钮搬进「⋯」下拉与抽屉）。
+   若哪天要恢复「列表页顶部再挂一条搜索栏」，记得两条老教训：
+   ① 白(#fff) 与底色(--bg #f0f2f5) 只差 6%，圆角必须四面都露出底色 + 1px 描边才看得见；
+   ② 用 ::before 画卡，别给容器加 margin（会把内容整体推右，破坏与笔记卡的左边缘对齐）。 */
 
 .nv-groups {
   display:flex; gap:8px; flex-shrink:0; overflow-x:auto; scrollbar-width:none;
@@ -2493,20 +2611,9 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 }
 .nv-list.detail .nv-item { flex-direction:column; margin-bottom:0; position:relative; }
 .nv-item:hover { background:var(--tool-h); }
-/* ---- 置顶项：必须与普通行/卡片有明确区分（偏好：特殊状态区别于常规项，不能只靠一个图钉图标）----
-   ⚠️ 底色微染 + 左侧主色竖条都画在 ::before 上，**不改 .nv-item 自身的 background**：
-   多选态 `.nv-item.sel` 也是主色底（10%），若把置顶底色写在 item 上会跟它抢优先级，
-   「置顶 + 选中」时必掉一层。竖条用 inset box-shadow，才能跟着 border-radius 一起裁圆角。 */
-.nv-item.pin::before {
-  content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
-  background:color-mix(in srgb, var(--p) 7%, transparent);
-  box-shadow:inset 3px 0 0 color-mix(in srgb, var(--p) 72%, transparent);
-}
-.nv-list.detail .nv-item.pin { border-color:color-mix(in srgb, var(--p) 26%, var(--border)); }
-/* 列表视图的通栏行：置顶行给 10px 圆角（与多选选中行同形态），否则整条 tinted 带子看着像一条色块 */
-.nv-list.list .nv-item.pin { border-radius:10px; }
-.nv-item.pin.sel::before { background:color-mix(in srgb, var(--p) 15%, transparent); }
-.nv-main { flex:1; min-width:0; position:relative; }
+/* ⚠️ 置顶**不再**用色条/底色区分（用户：「不要用色条区分，直接用区域区分」）：
+   列表渲染成「置顶」「最近」两个分区（见 .nv-sec），置顶项本身保持普通外观，只留一个小图钉图标。 */
+.nv-main { flex:1; min-width:0; }
 /* ⚠️ align-items 必须 flex-start（不是 center）：标题是 flex 容器（图钉与文字同行），
    当文字超过行数上限被裁时，center 会把溢出「上下各切一半」——首行只露半截并与下一行叠住。
    flex-start 才是从底部干净裁掉；图钉用 margin-top 单独找回竖直居中（(1.3em-13px)/2 ≈ 3px）。 */
@@ -2585,14 +2692,16 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 .nv-fab {
   /* ★相对 #notesView 定位：原来是 position:fixed 贴视口，而 body{max-width:960px} ——
      宽屏（≥1000px）下实测 FAB 落在 x=1208，纸面右缘才 1088，飘到纸面外 120px 处。
-     列表滚动时它仍固定在纸面右下（包含块是 #notesView，不是滚动容器 .nv-list）。 */
-  position:absolute; right:18px; bottom:calc(22px + env(safe-area-inset-bottom, 0px)); z-index:160;
+     列表滚动时它仍固定在纸面内（包含块是 #notesView，不是滚动容器 .nv-list）。
+     位置按用户要求从右下角改到**底部居中、离底边 40px**。 */
+  position:absolute; left:50%; right:auto; transform:translateX(-50%);
+  bottom:calc(40px + env(safe-area-inset-bottom, 0px)); z-index:160;
   width:54px; height:54px; border-radius:50%; background:var(--p); color:#fff; border:none;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
   box-shadow:0 8px 22px color-mix(in srgb, var(--p) 40%, transparent);
 }
 .nv-fab .ic { width:24px; height:24px; stroke-width:2.4; }
-.nv-fab:active { transform:scale(.94); }
+.nv-fab:active { transform:translateX(-50%) scale(.94); }
 
 /* 分组管理 / 笔记操作弹层 */
 /* 分组管理：与移动分组弹层同风格（行式列表 + 全套自定义按钮，禁原生样式） */
@@ -2656,28 +2765,13 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 .nv-mv-row.on .ck { opacity:1; }
 .link-actions button.danger { color:#ff4d4f; }
 @media (max-width:768px) {
-  /* 卡片左右各露 12px 底色（与 .nv-list 的 12px 内边距同值 → 卡片外缘与笔记卡外缘对齐），
-     内容再内缩 12px → 搜索框左缘在 x=24 */
-  .nv-head { padding:10px 24px 12px; gap:6px; }
-  .nv-head::before { inset:4px 12px 6px; border-radius:14px; }
-  .nv-icon { width:36px; height:36px; }
   .nv-list.detail { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 }
-/* 桌面端适配：头部 / 分组条 / 多选条内容与列表内容（880px 容器 + 24px 内边距）同轴对齐 */
+/* 桌面端适配：分组条 / 多选条内容与列表内容（880px 容器 + 24px 内边距）同轴对齐 */
 @media (min-width:900px) {
-  /* 卡片外缘与笔记卡外缘同轴（都在 880px 容器 +24px 处），内容再内缩 12px（+36px）
-     → 搜索框与笔记卡内文字对齐。max(…, 24px/36px) 不能省：容器窄于 904px 时
-     .nv-list 的 max-width:880px 不生效、不会居中，去掉 max() 会算成 12px/24px 而偏左 12px */
-  .nv-head {
-    padding-left:max(36px, calc((100% - 880px) / 2 + 36px));
-    padding-right:max(36px, calc((100% - 880px) / 2 + 36px));
-  }
-  .nv-head::before {
-    left:max(24px, calc((100% - 880px) / 2 + 24px));
-    right:max(24px, calc((100% - 880px) / 2 + 24px));
-  }
-  /* 分组 chip 与笔记卡外缘同轴。同样必须带 max(24px,…)：容器窄于 904px 时 .nv-list 不会居中，
-     少了 max() 会算成 2px、chip 反而比卡片左移 8px（这正是之前 900–950px 那档的老偏差） */
+  /* 分组 chip 与笔记卡外缘同轴。必须带 max(24px,…)：容器窄于 904px 时 .nv-list 的
+     max-width:880px 不生效、不会居中，少了 max() 会算成 2px、chip 反而比卡片左移 8px
+     （这正是之前 900–950px 那档的老偏差） */
   .nv-groups {
     padding-left:max(24px, calc((100% - 880px) / 2 + 24px));
     padding-right:max(24px, calc((100% - 880px) / 2 + 24px));
@@ -3069,6 +3163,10 @@ header .right { margin-left:auto; }
     <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7A1.5 1.5 0 0 1 5 5.5h4.2l2 2.3H19A1.5 1.5 0 0 1 20.5 9.3V18A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18V7Z"/></symbol>
     <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.7" fill="currentColor" stroke="none"/></symbol>
+    <!-- 三条杠（抽屉入口） -->
+    <symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></symbol>
+    <!-- 横向三个点（顶栏「⋯」下拉入口；i-dots 是竖向的，别混用） -->
+    <symbol id="i-dots-h" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/></symbol>
   </defs>
 </svg>
 <header>
@@ -3076,8 +3174,8 @@ header .right { margin-left:auto; }
        标签模式 → 只有字数统计；便签编辑态 → 返回键 + 当前笔记标题（靠它知道在编辑哪一条）。
        桌面宽屏由 grid 放进第 1 列；窄屏靠 DOM 顺序排最左。 -->
   <div class="h-left">
-    <!-- 桌面宽屏的便签列表页顶栏左端信息（仅 ≥920px 显示，见 CSS）；窄屏与标签模式不显示 -->
-    <span id="nvStats" class="nv-hd-stats"></span>
+    <!-- 便签模式（列表态 + 编辑态）：抽屉入口 —— 分组（增/改/删）与回收站都在里面 -->
+    <button class="icon-btn" id="nvMenuBtn" type="button" title="菜单（分组 / 回收站）"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span id="wordCount" title="字数 · 段落 · 行数 · 预计阅读时间">0 字 · 0 段 · 0 行 · 1 分钟</span>
     <!-- 便签模式：从笔记进入编辑器后出现的返回按钮（列表态与标签模式下均隐藏） -->
     <button class="icon-btn" id="nvBackBtn" type="button" title="返回笔记列表"><svg class="ic"><use href="#i-chev-l"/></svg></button>
@@ -3088,6 +3186,13 @@ header .right { margin-left:auto; }
        位置：桌面真居中于顶栏；窄屏退到顶栏最左端（手机顶栏中央被右侧 40px 热区占满，实测放不下）。
        便签列表态复用同一条顶栏 → 三处位置天然一致。 -->
   <button class="view-pill" id="viewPill" type="button" title="切换到便签模式（一条一屏，像便签本）"><svg class="ic"><use href="#i-list"/></svg><span>便签</span></button>
+  <!-- 便签模式的搜索框：点顶栏放大镜后**原地顶掉视图胶囊**（不新增一行搜索栏）。
+       与胶囊占同一格：窄屏靠 flex:1 吃满中间，≥920px 靠 grid-column:2 与胶囊同一格居中。 -->
+  <div class="hd-search" id="hdSearch">
+    <svg class="ic"><use href="#i-search"/></svg>
+    <input id="hdSearchInput" type="text" placeholder="搜索标题或正文" autocomplete="off" spellcheck="false">
+    <button id="hdSearchExit" type="button" title="退出搜索"><svg class="ic"><use href="#i-close"/></svg></button>
+  </div>
   <div class="right">
     <div class="meta">
       <span id="saveStatus" style="opacity:0">已保存</span>
@@ -3095,6 +3200,9 @@ header .right { margin-left:auto; }
     </div>
     <button class="icon-btn" id="undoBtn" type="button" title="撤销 (Ctrl+Z)"><svg class="ic"><use href="#i-undo"/></svg></button>
     <button class="icon-btn" id="redoBtn" type="button" title="重做 (Ctrl+Y)"><svg class="ic"><use href="#i-redo"/></svg></button>
+    <!-- 便签列表态专属：搜索入口 + 「视图 / 排序」下拉（默认隐藏，见 CSS） -->
+    <button class="icon-btn nv-list-only" id="nvSearchBtn" type="button" title="搜索笔记"><svg class="ic"><use href="#i-search"/></svg></button>
+    <button class="icon-btn nv-list-only" id="nvMoreBtn" type="button" title="视图与排序"><svg class="ic"><use href="#i-dots-h"/></svg></button>
     <div class="theme-wrap" id="themeWrap">
       <button class="theme-btn" id="themeBtn" type="button" title="主题：浅色（点击切换到其它主题）"><svg class="ic"><use href="#i-moon"/></svg></button>
       <div class="theme-dd" id="themeDd">
@@ -3105,22 +3213,50 @@ header .right { margin-left:auto; }
       </div>
     </div>
   </div>
+  <!-- 「视图 / 排序」下拉：必须挂在 header 下、不能塞进 .right（.right 有 overflow:hidden 会裁掉）。
+       定位用 fixed + JS 贴到 ⋯ 按钮下方（与 .theme-dd 同一套路）。 -->
+  <div class="nv-more-dd" id="nvMoreDd">
+    <div class="nv-dd-h">视图</div>
+    <button type="button" data-nvview="list"><svg class="ic"><use href="#i-list"/></svg><span>列表视图</span><svg class="ck ic"><use href="#i-check"/></svg></button>
+    <button type="button" data-nvview="detail"><svg class="ic"><use href="#i-grid"/></svg><span>详情视图</span><svg class="ck ic"><use href="#i-check"/></svg></button>
+    <div class="nv-dd-sep"></div>
+    <div class="nv-dd-h">排序</div>
+    <button type="button" data-nvsort="ts"><svg class="ic"><use href="#i-clock"/></svg><span>编辑时间</span><svg class="ck ic"><use href="#i-check"/></svg></button>
+    <button type="button" data-nvsort="title"><svg class="ic"><use href="#i-align-l"/></svg><span>文件名称</span><svg class="ck ic"><use href="#i-check"/></svg></button>
+  </div>
   <!-- 长按「步骤 1/1」徽标弹出的字数统计（原来常驻顶栏左端那块文字）。
        必须挂在 header 下、不能塞进 .right —— .right 有 overflow:hidden，气泡会被裁掉 -->
   <div class="wc-tip" id="wcTip"></div>
 </header>
-<!-- 便签模式：笔记列表（WPS 便签式）。列表态时覆盖全屏，进入某条笔记后隐藏、露出编辑器 -->
-<div id="notesView">
-  <div class="nv-head">
-    <div class="nv-search">
-      <svg class="ic"><use href="#i-search"/></svg>
-      <input id="nvSearch" type="text" placeholder="搜索标题或正文" autocomplete="off" spellcheck="false">
-      <button id="nvSearchClear" type="button" title="清空搜索"><svg class="ic"><use href="#i-close"/></svg></button>
+<!-- 便签模式：侧边抽屉（分组：可新增/编辑/删除；回收站入口） -->
+<div class="nv-dr-ov" id="nvDrawerOv">
+  <aside class="nv-drawer" id="nvDrawer">
+    <div class="nv-dr-head">
+      <span class="nv-dr-title">菜单</span>
+      <button class="nv-dr-x" id="nvDrawerClose" type="button" title="关闭"><svg class="ic"><use href="#i-close"/></svg></button>
     </div>
-    <button class="nv-icon" id="nvViewToggle" type="button" title="切换列表 / 详情视图"><svg class="ic"><use href="#i-grid"/></svg></button>
-    <button class="nv-icon" id="nvGroupBtn" type="button" title="分组管理"><svg class="ic"><use href="#i-folder"/></svg></button>
-    <!-- 「切回标签」入口不在这里：列表页上方现在保留了主顶栏，胶囊固定待在顶栏里（三处同一位置） -->
+    <div class="nv-dr-sec">
+      <div class="nv-dr-h">分组</div>
+      <div class="nv-dr-list" id="nvDrGroups"></div>
+      <button class="nv-dr-add" id="nvDrAddGroup" type="button"><svg class="ic"><use href="#i-plus"/></svg><span>新建分组</span></button>
+    </div>
+    <!-- 回收站：不要「其他」分类，直接压在抽屉最底部（margin-top:auto） -->
+    <button class="nv-dr-row nv-dr-bin" id="nvDrBin" type="button"><svg class="ic"><use href="#i-trash"/></svg><span class="nm">回收站</span><span class="cnt" id="nvBinCnt">0</span></button>
+  </aside>
+</div>
+<!-- 便签模式：回收站**独立页面**（不套用标签模式管理弹窗里的那个回收站 tab） -->
+<div class="nv-bin-page" id="nvBinPage">
+  <div class="nv-bin-head">
+    <button class="icon-btn" id="nvBinBack" type="button" title="返回"><svg class="ic"><use href="#i-chev-l"/></svg></button>
+    <span class="nv-bin-title">回收站</span>
+    <button class="nv-bin-clear" id="nvBinClear" type="button">清空</button>
   </div>
+  <div class="nv-bin-list" id="nvBinList"></div>
+</div>
+<!-- 便签模式：笔记列表（WPS 便签式）。列表态时覆盖全屏，进入某条笔记后隐藏、露出编辑器 -->
+<!-- 便签模式：笔记列表（分组 chips + 列表）。原先顶部的「搜索框 + 视图切换 + 分组管理」那一行已撤：
+     搜索改到顶栏放大镜（点开后原地顶掉视图胶囊），视图切换与排序进顶栏「⋯」下拉，分组管理进侧边抽屉。 -->
+<div id="notesView">
   <div class="nv-selbar" id="nvSelBar">
     <button class="nv-sb-x" id="nvSelExit" type="button" title="退出多选"><svg class="ic"><use href="#i-close"/></svg></button>
     <button class="nv-sb-txt" id="nvSelAll" type="button">全选</button>
@@ -4387,6 +4523,7 @@ header .right { margin-left:auto; }
   // ============================================================
   let nvGroups = loadJSON('gw_groups', []);
   let nvView = localStorage.getItem('gw_notes_view') || 'list';  // list | detail
+  let nvSort = localStorage.getItem('gw_notes_sort') || 'ts';     // ts（编辑时间）| title（文件名称）
   let nvGroup = localStorage.getItem('gw_notes_group') || '';    // '' = 全部
   let nvQuery = '';
   let nvMode = localStorage.getItem('gw_viewmode') || 'tabs';    // tabs | notes
@@ -4433,6 +4570,20 @@ header .right { margin-left:auto; }
     return safe.slice(0, i) + '<mark>' + safe.slice(i, i + eq.length) + '</mark>' + safe.slice(i + eq.length);
   }
 
+  // 排序：ts = 编辑时间（新→旧）｜title = 文件名称（按标题字典序）
+  // ⚠️ 只在「最近」区域内部排；置顶区域同样按此顺序排，分区本身恒在最前。
+  function nvSortIds(ids) {
+    if (nvSort === 'title') {
+      ids.sort(function(a, b) {
+        const ta = (docs[a] && docs[a].title) || '', tb = (docs[b] && docs[b].title) || '';
+        return ta.localeCompare(tb, 'zh-Hans-CN');
+      });
+    } else {
+      ids.sort(function(a, b) { return ((docs[b] && docs[b].ts) || 0) - ((docs[a] && docs[a].ts) || 0); });
+    }
+    return ids;
+  }
+
   function nvVisibleIds() {
     const q = nvQuery.trim().toLowerCase();
     const ids = Object.keys(docs).filter(function(id) {
@@ -4440,12 +4591,7 @@ header .right { margin-left:auto; }
       if (!q) return true;
       return ((docs[id].title || '') + ' ' + nvText(docs[id].html)).toLowerCase().indexOf(q) >= 0;
     });
-    ids.sort(function(a, b) {
-      const pa = docs[a].pinned ? 1 : 0, pb = docs[b].pinned ? 1 : 0;
-      if (pa !== pb) return pb - pa;
-      return (docs[b].ts || 0) - (docs[a].ts || 0);
-    });
-    return ids;
+    return nvSortIds(ids);
   }
 
   function renderNotesGroups() {
@@ -4488,12 +4634,11 @@ header .right { margin-left:auto; }
       list.innerHTML = q0
         ? '<div class="nv-empty">没有匹配<span class="q">「' + escapeHtml(q0) + '」</span>的笔记' +
           '<br><button class="nv-empty-clear" type="button">清除搜索</button></div>'
-        : '<div class="nv-empty">还没有笔记，点右下角 + 新建</div>';
+        : '<div class="nv-empty">还没有笔记，点下方 + 新建</div>';
       return;
     }
     const q = nvQuery.trim();
-    let h = '';
-    ids.forEach(function(id) {
+    function itemHtml(id) {
       const d = docs[id];
       const text = nvText(d.html);
       // 摘要窗口：命中位置靠后时从命中点前 40 字开始截取，保证搜索结果里能看到高亮
@@ -4503,7 +4648,7 @@ header .right { margin-left:auto; }
         if (i > 60) ex = '…' + text.slice(i - 40);
       }
       ex = ex.slice(0, 200);
-      h += '<div class="nv-item' + (d.pinned ? ' pin' : '') + (nvSelMode && nvSel.indexOf(id) >= 0 ? ' sel' : '') + '" data-id="' + id + '">' +
+      return '<div class="nv-item' + (nvSelMode && nvSel.indexOf(id) >= 0 ? ' sel' : '') + '" data-id="' + id + '">' +
         (nvSelMode ? '<span class="nv-chk"><svg class="ic"><use href="#i-check"/></svg></span>' : '') +
         '<div class="nv-main">' +
           '<div class="nv-title">' + (d.pinned ? '<svg class="ic nv-pin"><use href="#i-pin-tab"/></svg>' : '') +
@@ -4513,20 +4658,149 @@ header .right { margin-left:auto; }
             (d.group ? '<span class="nv-tag">' + escapeHtml(d.group) + '</span>' : '') + '</div>' +
         '</div>' +
       '</div>';
-    });
-    list.innerHTML = h;
+    }
+    // ★置顶不再靠色条/底色区分（用户要求），直接分「置顶」「最近」两个区域：
+    //   区域标题横跨整行（卡片视图下 grid-column:1/-1），置顶项本身保持普通外观。
+    function section(label, icon, arr) {
+      if (!arr.length) return '';
+      return '<div class="nv-sec"><svg class="ic"><use href="' + icon + '"/></svg>' +
+        '<span>' + label + '</span><span class="n">' + arr.length + '</span></div>' +
+        arr.map(itemHtml).join('');
+    }
+    const pinIds = ids.filter(function(id) { return docs[id] && docs[id].pinned; });
+    const restIds = ids.filter(function(id) { return !(docs[id] && docs[id].pinned); });
+    list.innerHTML = section('置顶', '#i-pin-tab', pinIds) + section('最近', '#i-clock', restIds);
   }
 
-  function nvRenderAll() { renderNotesGroups(); renderNotes(); nvSyncHdStats(); }
+  function nvRenderAll() { renderNotesGroups(); renderNotes(); }
 
-  // 桌面宽屏便签列表页顶栏左端那条「N 条 · M 置顶」（窄屏与标签模式不显示，见 CSS）
-  function nvSyncHdStats() {
-    const el = $('nvStats');
-    if (!el) return;
-    const ids = Object.keys(docs);
-    let pin = 0;
-    ids.forEach(function(id) { if (docs[id] && docs[id].pinned) pin++; });
-    el.textContent = ids.length + ' 条' + (pin ? ' · ' + pin + ' 置顶' : '');
+  // ---------- 顶栏：搜索（原地顶掉视图胶囊）/ ⋯ 下拉 / 侧边抽屉 ----------
+  function nvSearchEnter() {
+    if (!nvIsNotes()) return;
+    document.body.classList.add('nv-searching');
+    const i = $('hdSearchInput');
+    if (i) { i.value = nvQuery; i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+  }
+  function nvSearchExit() {
+    document.body.classList.remove('nv-searching');
+    const i = $('hdSearchInput');
+    if (i) i.value = '';
+    if (nvQuery) { nvQuery = ''; nvRenderAll(); }
+  }
+
+  function nvSyncMoreDd() {
+    const dd = $('nvMoreDd');
+    if (!dd) return;
+    dd.querySelectorAll('button[data-nvview]').forEach(function(b) {
+      b.classList.toggle('on', b.getAttribute('data-nvview') === nvView);
+    });
+    dd.querySelectorAll('button[data-nvsort]').forEach(function(b) {
+      b.classList.toggle('on', b.getAttribute('data-nvsort') === nvSort);
+    });
+  }
+  function nvMoreToggle(force) {
+    const dd = $('nvMoreDd'), btn = $('nvMoreBtn');
+    if (!dd) return;
+    const open = force === undefined ? !dd.classList.contains('open') : !!force;
+    dd.classList.toggle('open', open);
+    if (!open) { dd.style.top = ''; dd.style.right = ''; return; }
+    nvSyncMoreDd();
+    const r = btn.getBoundingClientRect();
+    dd.style.top = (r.bottom + 6) + 'px';
+    dd.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
+  }
+
+  function nvDrawerToggle(on) {
+    const ov = $('nvDrawerOv');
+    if (!ov) return;
+    const open = on === undefined ? !ov.classList.contains('on') : !!on;
+    if (open) nvMoreToggle(false);          // 两层浮层不叠加
+    ov.classList.toggle('on', open);
+    if (open) nvRenderDrawer();
+  }
+  function nvRenderDrawer() {
+    const box = $('nvDrGroups');
+    if (box) {
+      if (!nvGroups.length) {
+        box.innerHTML = '<div class="nv-dr-empty">还没有分组，用下面的「新建分组」建一个。</div>';
+      } else {
+        box.innerHTML = nvGroups.map(function(g, i) {
+          let n = 0;
+          Object.keys(docs).forEach(function(id) { if ((docs[id].group || '') === g) n++; });
+          return '<div class="nv-dr-row' + (nvGroup === g ? ' on' : '') + '" data-dg="' + escapeHtml(g) + '">' +
+            '<svg class="ic"><use href="#i-folder"/></svg><span class="nm">' + escapeHtml(g) + '</span>' +
+            '<span class="cnt">' + n + '</span><span class="nv-dr-act">' +
+            '<button data-dgrename="' + i + '" title="重命名分组"><svg class="ic"><use href="#i-edit"/></svg></button>' +
+            '<button class="del" data-dgdel="' + i + '" title="删除分组"><svg class="ic"><use href="#i-trash"/></svg></button>' +
+            '</span></div>';
+        }).join('');
+      }
+    }
+    const c = $('nvBinCnt');
+    if (c) c.textContent = loadJSON('gw_bin', []).length;
+  }
+
+  // ---------- 回收站：便签模式独立页面（不套用标签模式管理弹窗里的回收站 tab） ----------
+  function nvOpenBin() {
+    nvDrawerToggle(false);
+    const pg = $('nvBinPage');
+    if (pg) pg.classList.add('on');
+    nvRenderBinPage();
+  }
+  function nvCloseBin() {
+    const pg = $('nvBinPage');
+    if (pg) pg.classList.remove('on');
+  }
+  function nvRenderBinPage() {
+    const box = $('nvBinList');
+    if (!box) return;
+    const bin = loadJSON('gw_bin', []);
+    if (!bin.length) {
+      box.innerHTML = '<div class="nv-bin-empty">回收站是空的<br><span>删掉的笔记会先放到这里，随时可以恢复</span></div>';
+      return;
+    }
+    box.innerHTML = bin.map(function(it, i) {
+      const ex = (it.html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+      const when = new Date(it.ts || Date.now()).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      return '<div class="nv-bin-row" data-i="' + i + '"><div class="nv-bin-main">' +
+        '<div class="nv-bin-t">' + escapeHtml(it.title || '未命名') + '</div>' +
+        (ex ? '<div class="nv-bin-e">' + escapeHtml(ex) + '</div>' : '') +
+        '<div class="nv-bin-m">' + when + '</div></div>' +
+        '<div class="nv-bin-act"><button data-bin-restore="' + i + '">恢复</button>' +
+        '<button class="danger" data-bin-purge="' + i + '">彻底删除</button></div></div>';
+    }).join('');
+  }
+  function nvBinRestore(i) {
+    const bin = loadJSON('gw_bin', []);
+    if (!bin[i]) return;
+    const item = bin.splice(i, 1)[0];
+    const newId = 'd' + docCounter++;
+    docs[newId] = { title: item.title || '恢复笔记', html: item.html || '', ts: Date.now() };
+    undoStacks[newId] = [item.html || ''];
+    redoStacks[newId] = [];
+    saveJSON('gw_bin', bin); saveDocs();
+    nvRenderBinPage(); nvRenderAll();
+    toast('已恢复「' + (item.title || '未命名') + '」');
+  }
+  function nvBinPurge(i) {
+    const bin = loadJSON('gw_bin', []);
+    if (!bin[i]) return;
+    gwConfirm('彻底删除「' + (bin[i].title || '未命名') + '」？不可恢复！', function() {
+      bin.splice(i, 1);
+      saveJSON('gw_bin', bin);
+      nvRenderBinPage();
+      if (typeof renderBin === 'function') renderBin();
+      toast('已彻底删除');
+    }, { title: '彻底删除' });
+  }
+  function nvBinClear() {
+    const bin = loadJSON('gw_bin', []);
+    if (!bin.length) return;
+    gwConfirm('清空回收站？共 ' + bin.length + ' 条，删除后不可恢复！', function() {
+      saveJSON('gw_bin', []);
+      nvRenderBinPage(); nvRenderAll();
+      toast('回收站已清空');
+    }, { title: '清空回收站' });
   }
 
   // 顶栏视图开关（#viewPill）：一枚胶囊双向切，图标与文案随当前模式走
@@ -4614,6 +4888,8 @@ header .right { margin-left:auto; }
   function nvOpenNote(id) {
     switchDoc(id);
     document.body.classList.remove('notes-list');
+    document.body.classList.remove('nv-searching');   // 进编辑器时收起顶栏搜索框（查询词保留，回列表仍是过滤态）
+    nvMoreToggle(false);
     nvSyncEdTitle();
     const ed = $('ed');
     if (ed) ed.focus();
@@ -4622,6 +4898,8 @@ header .right { margin-left:auto; }
   function nvNewNote() {
     newDoc();
     document.body.classList.remove('notes-list');
+    document.body.classList.remove('nv-searching');
+    nvMoreToggle(false);
     nvSyncEdTitle();
     const ed = $('ed');
     if (ed) ed.focus();
@@ -4822,11 +5100,13 @@ header .right { margin-left:auto; }
       // 不能用时间窗——窗口太宽会把用户长按后的第一次真实点击也一起吞掉。
       list.addEventListener('click', function(e) {
         if (nvSwallowClick) { nvSwallowClick = false; clearTimeout(nvSwallowTimer); return; }
-        // 搜索无结果时的「清除搜索」
+        // 搜索无结果时的「清除搜索」（搜索框已搬进顶栏，这里清的是同一个查询词）
         const clr = e.target.closest ? e.target.closest('.nv-empty-clear') : null;
         if (clr) {
-          const s = $('nvSearch');
-          if (s) { s.value = ''; s.dispatchEvent(new Event('input')); s.focus(); }
+          nvQuery = '';
+          const s = $('hdSearchInput');
+          if (s) { s.value = ''; s.focus(); }
+          nvRenderAll();
           return;
         }
         const item = e.target.closest ? e.target.closest('.nv-item') : null;
@@ -4952,32 +5232,92 @@ header .right { margin-left:auto; }
       nvRenderAll();
     });
 
-    const si = $('nvSearch');
-    if (si) {
-      si.addEventListener('input', function() {
-        nvQuery = si.value;
-        const box = si.parentNode;
-        if (box) box.classList.toggle('has-q', !!nvQuery);
-        nvRenderAll();   // 分组 chip 的「命中 N」要跟着搜索一起刷新
-      });
-    }
-    const sc = $('nvSearchClear');
-    if (sc) sc.addEventListener('click', function() {
-      if (si) { si.value = ''; si.dispatchEvent(new Event('input')); }
+    // ---- 顶栏搜索：点放大镜进入（原地顶掉视图胶囊），输入即过滤，✕ 退出并清空 ----
+    const sBtn = $('nvSearchBtn');
+    if (sBtn) sBtn.addEventListener('click', nvSearchEnter);
+    const sIn = $('hdSearchInput');
+    if (sIn) sIn.addEventListener('input', function() { nvQuery = sIn.value; nvRenderAll(); });
+    if (sIn) sIn.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') nvSearchExit();
+      if (e.key === 'Enter') sIn.blur();
+    });
+    const sExit = $('hdSearchExit');
+    if (sExit) sExit.addEventListener('click', nvSearchExit);
+
+    // ---- 顶栏「⋯」：视图切换 + 排序 ----
+    const mBtn = $('nvMoreBtn');
+    if (mBtn) mBtn.addEventListener('click', function(e) { e.stopPropagation(); nvMoreToggle(); });
+    const mDd = $('nvMoreDd');
+    if (mDd) mDd.addEventListener('click', function(e) {
+      const vb = e.target.closest ? e.target.closest('button[data-nvview]') : null;
+      const sb = e.target.closest ? e.target.closest('button[data-nvsort]') : null;
+      if (vb) {
+        nvView = vb.getAttribute('data-nvview') || 'list';
+        localStorage.setItem('gw_notes_view', nvView);
+        nvRenderAll(); nvSyncMoreDd();
+        toast(nvView === 'list' ? '列表视图' : '详情视图');
+        nvMoreToggle(false);
+      } else if (sb) {
+        nvSort = sb.getAttribute('data-nvsort') || 'ts';
+        localStorage.setItem('gw_notes_sort', nvSort);
+        renderNotes(); nvSyncMoreDd();
+        toast(nvSort === 'ts' ? '按编辑时间排序' : '按文件名称排序');
+        nvMoreToggle(false);
+      }
+    });
+    // 点别处 / 换视图 / 按 Esc 都收起下拉与抽屉
+    document.addEventListener('click', function(e) {
+      if (mDd && mDd.classList.contains('open') && !mDd.contains(e.target)) nvMoreToggle(false);
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Escape') return;
+      nvMoreToggle(false);
+      nvDrawerToggle(false);
+      nvCloseBin();
+    });
+    // 抽屉遮罩点击关闭
+    const drOv = $('nvDrawerOv');
+    if (drOv) drOv.addEventListener('click', function(e) { if (e.target === drOv) nvDrawerToggle(false); });
+    const drX = $('nvDrawerClose');
+    if (drX) drX.addEventListener('click', function() { nvDrawerToggle(false); });
+
+    // ---- 侧边抽屉：分组（筛选 / 重命名 / 删除 / 新增）+ 回收站 ----
+    const menuBtn = $('nvMenuBtn');
+    if (menuBtn) menuBtn.addEventListener('click', function() { nvMoreToggle(false); nvDrawerToggle(); });
+    const drList = $('nvDrGroups');
+    if (drList) drList.addEventListener('click', function(e) {
+      const rn = e.target.closest ? e.target.closest('[data-dgrename]') : null;
+      const dl = e.target.closest ? e.target.closest('[data-dgdel]') : null;
+      if (rn) {
+        e.stopPropagation();
+        // ⚠️ 必须先关抽屉：抽屉 z-index(260) 高于重命名/分组弹层(200)，不关的话弹层被它挡住点不到
+        nvDrawerToggle(false);
+        nvOpenRename('group', nvGroups[+rn.getAttribute('data-dgrename')], { idx: +rn.getAttribute('data-dgrename') });
+        return;
+      }
+      if (dl) { e.stopPropagation(); nvDelGroup(+dl.getAttribute('data-dgdel')); nvRenderDrawer(); return; }
+      const row = e.target.closest ? e.target.closest('.nv-dr-row') : null;
+      if (!row) return;
+      nvGroup = (nvGroup === (row.getAttribute('data-dg') || '')) ? '' : (row.getAttribute('data-dg') || '');
+      localStorage.setItem('gw_notes_group', nvGroup);
+      nvRenderAll(); nvRenderDrawer();
+    });
+    const drAdd = $('nvDrAddGroup');
+    if (drAdd) drAdd.addEventListener('click', function() { nvDrawerToggle(false); nvOpenGroups(); });
+    const drBin = $('nvDrBin');
+    if (drBin) drBin.addEventListener('click', nvOpenBin);
+    const binBack = $('nvBinBack');
+    if (binBack) binBack.addEventListener('click', nvCloseBin);
+    const binClear = $('nvBinClear');
+    if (binClear) binClear.addEventListener('click', nvBinClear);
+    const binList = $('nvBinList');
+    if (binList) binList.addEventListener('click', function(e) {
+      const rs = e.target.closest ? e.target.closest('[data-bin-restore]') : null;
+      const pg2 = e.target.closest ? e.target.closest('[data-bin-purge]') : null;
+      if (rs) nvBinRestore(+rs.getAttribute('data-bin-restore'));
+      else if (pg2) nvBinPurge(+pg2.getAttribute('data-bin-purge'));
     });
 
-    const vt = $('nvViewToggle');
-    if (vt) vt.addEventListener('click', function() {
-      nvView = (nvView === 'list') ? 'detail' : 'list';
-      localStorage.setItem('gw_notes_view', nvView);
-      nvUpdateViewIcon();
-      renderNotes();
-      toast(nvView === 'list' ? '列表视图' : '详情视图');
-    });
-    nvUpdateViewIcon();
-
-    const gbtn = $('nvGroupBtn');
-    if (gbtn) gbtn.addEventListener('click', nvOpenGroups);
     const fab = $('nvFab');
     if (fab) fab.addEventListener('click', nvNewNote);
     // 顶栏视图开关（#viewPill）：一枚胶囊双向切 —— 标签模式 → 便签，便签（列表/编辑）→ 标签
@@ -5031,13 +5371,8 @@ header .right { margin-left:auto; }
     applyViewMode();
   }
 
-  function nvUpdateViewIcon() {
-    const vt = $('nvViewToggle');
-    if (!vt) return;
-    const use = vt.querySelector('use');
-    if (use) use.setAttribute('href', nvView === 'list' ? '#i-grid' : '#i-list');
-    vt.title = nvView === 'list' ? '当前：列表视图（点击切到详情视图）' : '当前：详情视图（点击切到列表视图）';
-  }
+  // 视图切换按钮已从便签列表页撤掉（进「⋯」下拉），旧的图标同步函数随之删除。
+  // 抽屉打开时也要收起下拉，反之亦然，避免两层浮层叠在一起。
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', nvInit);
   else nvInit();

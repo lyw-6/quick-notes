@@ -2380,16 +2380,27 @@ body.notes-mode:not(.notes-list) header { justify-content:flex-start; }
 #nvBackBtn { display:none; }
 body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 
+/* ⚠️ 别再用「通栏白条 + 只把下两角改圆角」——白(--card #fff) 与页面底色(--bg #f0f2f5)
+   只差 6%，圆角处露出的就是几乎同色的底，视觉上完全看不出弧线，仍然是一条直角横线
+   （上一版就是这么翻车的）。这里让卡片**四面都收进来**：左右各留 12px、上下各留 4~6px
+   露出底色，再加 1px 描边（与笔记卡同款）——「这是一张圆角卡」的形状才立得住。
+   结构上用 ::before 画卡而不是给 .nv-head 加 margin：margin 会把内容整体推右，
+   破坏下面「搜索框 / 分组 chip / 笔记卡」三者的左边缘对齐（实测差 12px）。 */
 .nv-head {
+  position:relative; z-index:0;
   display:flex; align-items:center; gap:8px; flex-shrink:0;
-  /* 顶部安全区已由 body 的 padding 承担（列表页不再是 fixed 覆盖层），这里不再重复加 */
-  padding:10px 12px;
-  /* 原来是「白色通栏 + 一条 1px 直角分割线」，底部两个角是尖的，横贯整屏显得很方。
-     改成底部圆角 + 一层柔和投影：白块自己「收边」，不再靠硬线跟下面的分组条硬切。 */
-  border-bottom:none;
+  /* 顶部安全区已由 body 的 padding 承担（列表页不再是 fixed 覆盖层），这里不再重复加。
+     24px = 卡片内缩 12px + 卡片自身内边距 12px */
+  padding:12px 24px 14px;
+  background:transparent;
+}
+.nv-head::before {
+  content:''; position:absolute; z-index:-1;
+  inset:4px 12px 6px;
+  border-radius:16px;
   background:var(--card);
-  border-radius:0 0 18px 18px;
-  box-shadow:0 3px 12px rgba(20,30,60,.07);
+  border:1px solid var(--border);
+  box-shadow:0 4px 14px rgba(20,30,60,.10);
 }
 .nv-search {
   flex:1; min-width:0; display:flex; align-items:center; gap:6px;
@@ -2573,15 +2584,31 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 .nv-mv-row.on .ck { opacity:1; }
 .link-actions button.danger { color:#ff4d4f; }
 @media (max-width:768px) {
-  .nv-head { padding:8px 10px; gap:6px; }
+  /* 卡片左右各露 12px 底色（与 .nv-list 的 12px 内边距同值 → 卡片外缘与笔记卡外缘对齐），
+     内容再内缩 12px → 搜索框左缘在 x=24 */
+  .nv-head { padding:10px 24px 12px; gap:6px; }
+  .nv-head::before { inset:4px 12px 6px; border-radius:14px; }
   .nv-icon { width:36px; height:36px; }
   .nv-list.detail { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 }
 /* 桌面端适配：头部 / 分组条 / 多选条内容与列表内容（880px 容器 + 24px 内边距）同轴对齐 */
 @media (min-width:900px) {
-  .nv-head, .nv-groups {
-    padding-left:max(16px, calc((100% - 880px) / 2 + 24px));
-    padding-right:max(16px, calc((100% - 880px) / 2 + 24px));
+  /* 卡片外缘与笔记卡外缘同轴（都在 880px 容器 +24px 处），内容再内缩 12px（+36px）
+     → 搜索框与笔记卡内文字对齐。max(…, 24px/36px) 不能省：容器窄于 904px 时
+     .nv-list 的 max-width:880px 不生效、不会居中，去掉 max() 会算成 12px/24px 而偏左 12px */
+  .nv-head {
+    padding-left:max(36px, calc((100% - 880px) / 2 + 36px));
+    padding-right:max(36px, calc((100% - 880px) / 2 + 36px));
+  }
+  .nv-head::before {
+    left:max(24px, calc((100% - 880px) / 2 + 24px));
+    right:max(24px, calc((100% - 880px) / 2 + 24px));
+  }
+  /* 分组 chip 与笔记卡外缘同轴。同样必须带 max(24px,…)：容器窄于 904px 时 .nv-list 不会居中，
+     少了 max() 会算成 2px、chip 反而比卡片左移 8px（这正是之前 900–950px 那档的老偏差） */
+  .nv-groups {
+    padding-left:max(24px, calc((100% - 880px) / 2 + 24px));
+    padding-right:max(24px, calc((100% - 880px) / 2 + 24px));
   }
   .nv-list { padding-left:24px; padding-right:24px; }
   .nv-list.detail { grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:14px; padding-top:16px; }

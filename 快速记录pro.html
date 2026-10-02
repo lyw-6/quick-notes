@@ -28,6 +28,11 @@ html.kb-lock { --kbh: 0px !important; }
   --shadow: 0 4px 12px rgba(0,0,0,.08);
 }
 [data-theme="dark"] {
+  /* dark 也要有自己的主色：否则回落 root 的 #1677ff，便签「+」等白字实底件
+     在 slate 深底上是刺眼电信蓝（2026-10-03 用户反馈 FAB 不跟主题）。
+     取 Tailwind blue-500/400：与 #0b1120 slate 同色系、更柔，白字对比仍 ≥3.6 */
+  --p: #3b82f6;
+  --p-h: #60a5fa;
   --bg: #0b1120;
   --t: #f1f5f9;
   --s: #64748b;
@@ -42,6 +47,10 @@ html.kb-lock { --kbh: 0px !important; }
 }
 /* 毛玻璃磨砂主题：半透明表面 + 背景模糊 */
 [data-theme="frost"] {
+  /* frost 同样补主色：背景渐变（#e9edff→#f0ecff→#e7f6f0）自带蓝紫调，
+     默认蓝 #1677ff 与玻璃语言不搭 → indigo-500/400 */
+  --p: #6366f1;
+  --p-h: #818cf8;
   --t: #1f2937;
   --s: #51607a;
   --frost-blur: 14px;
@@ -55,7 +64,7 @@ html.kb-lock { --kbh: 0px !important; }
   --dd: rgba(255,255,255, calc(var(--frost-alpha) * 1.31));
   --dd-h: rgba(255,255,255, calc(var(--frost-alpha) * 1.64));
   --shadow: 0 8px 30px rgba(31,41,55,0.18);
-  --bg: linear-gradient(135deg,#e9edff 0%,#f0ecff 48%,#e7f6f0 100%);
+  --bg: linear-gradient(135deg,#dfe4ff 0%,#eae5ff 48%,#d9f5f1 100%);
 }
 /* 绿色护眼主题：低饱和绿灰背景、墨绿文字、清新主色，降低蓝光刺激 */
 [data-theme="green"] {
@@ -2905,6 +2914,86 @@ header .right { margin-left:auto; }
 @media (min-width:900px) {
   /* 桌面行内边距更大（上下 14px），行高同步 +4 */
   .nv-list.list .nv-item { height:94px; }
+}
+/* ===================== frost 液态玻璃 v2（2026-10-03）=====================
+   背景：只换底色不够——原来所有面都是「白 + blur」，背后只有一张静态渐变，
+   洗白后各面趋于同一淡青白，于是和 light 只差色温。这次两件事一起做：
+     ① 渐变换三色（靛紫→天蓝→青绿，见 DEFAULT_FROST_BG），透色更有层次；
+     ② 给每个面统一的「玻璃材质」规格：顶部镜面高光 + 底部内反光 + 白色玻璃描边(1px)
+        + 冷色外投影(厚度感)。透明度分层：标签 .30 / 编辑纸 .47 / 卡片 .66，面与面之间有明暗差。
+   ⚠️ 只加材质（border-color / box-shadow），不碰 background —— 壁纸(bg-custom)下顶栏底色由
+      body.bg-custom 规则接管，这里不会抢；描边/投影在壁纸上也成立。
+   ⚠️ 卡片类一律用 inset 0 0 0 1px 描边（不是 border），避免改变盒模型影响固定高度的断言。 */
+[data-theme="frost"] .doc-tab,
+[data-theme="frost"] .doc-new {
+  border-color: rgba(255,255,255,.62);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.94),
+    inset 0 -1px 0 rgba(255,255,255,.34),
+    0 2px 9px rgba(32,36,110,.13);
+}
+[data-theme="frost"] .doc-tab.active {
+  border-color: color-mix(in srgb, var(--p) 52%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.96),
+    inset 0 -1px 0 rgba(255,255,255,.40),
+    0 3px 11px rgba(32,36,110,.15);
+}
+/* 编辑纸：白度略降（0.50→0.46）让渐变透出来，配玻璃边与悬浮投影 */
+[data-theme="frost"] .editor-wrap {
+  background: rgba(255,255,255,calc(var(--frost-alpha) * 0.84));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.46),
+    inset 0 1px 0 rgba(255,255,255,.72),
+    0 16px 40px rgba(28,32,100,.16);
+}
+/* 便签卡 / 分组 chip / 多选条 / 空态按钮：同款玻璃，比纸面略实一档 */
+[data-theme="frost"] .nv-item {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.50),
+    inset 0 1px 0 rgba(255,255,255,.72),
+    0 3px 10px rgba(32,36,110,.10);
+}
+[data-theme="frost"] .nv-chip,
+[data-theme="frost"] .nv-sb-txt,
+[data-theme="frost"] .nv-sb-x,
+[data-theme="frost"] .nv-empty-clear {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.50),
+    inset 0 1px 0 rgba(255,255,255,.75);
+}
+[data-theme="frost"] .nv-selbar {
+  border-color: rgba(255,255,255,.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.80),
+    0 8px 26px rgba(28,32,100,.18);
+}
+/* 便签列表页头部白卡：frost 下改成玻璃卡 */
+[data-theme="frost"] .nv-head::before {
+  background: rgba(255,255,255,calc(var(--frost-alpha) * 1.15));
+  border-color: rgba(255,255,255,.55);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+}
+/* FAB 是主色实底，加一圈白色玻璃环做过渡，避免实色块与玻璃语言割裂 */
+[data-theme="frost"] .nv-fab {
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.45),
+    0 8px 22px color-mix(in srgb, var(--p) 40%, transparent);
+}
+/* ⚠️ 透明图标钮必须去掉 frost 的全局 button 模糊：
+   `[data-theme="frost"] button` 给所有按钮加了 backdrop-filter，但 ☰/放大镜/⋯ 是**透明底**
+   （light 下就定为透明图标钮），没有半透明白底去承载模糊 → blur 只在背后渐变上糊出一块深色方斑。
+   实测左上角 ☰ 区域 (95,115,244) vs 紧邻背景 (172,184,250)，色差 152，边界生硬；
+   渐变换成靛紫后斑更深。原则：有玻璃底才模糊，透底的一律不模糊。 */
+[data-theme="frost"] #nvMenuBtn,
+[data-theme="frost"] #nvSearchBtn,
+[data-theme="frost"] #nvMoreBtn,
+[data-theme="frost"] .nv-sb-ic,
+[data-theme="frost"] .nv-grow .nv-ga,
+[data-theme="frost"] .nv-sheet-close {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 </style>
 <script>
@@ -9426,7 +9515,12 @@ header .right { margin-left:auto; }
   }
 
   // 背景层：自定义背景（gw_bg）优先；磨砂主题无自定义背景时给一个默认渐变，让毛玻璃效果可见
-  const DEFAULT_FROST_BG = 'linear-gradient(135deg,#4facfe 0%,#00f2fe 100%)';
+  /* 2026-10-03 换氛围：原来那组 #4facfe→#00f2fe 只有「蓝→青」两色，玻璃洗白后整页收敛成同一种淡青，
+     与 light 的灰白只有色温差 → 被反馈「同质化」。改成三色，与 frost 主色 indigo 同族，层次更丰富。
+     ⚠️ 起点（135deg = 左上角）必须是清亮的天蓝，不能放深靛紫：左上角正是 ☰ 菜单键的位置，
+     实测深紫 #6f74f7 起点让该区域压到 (108,120,247)，按钮图标深灰糊在浓紫里「很丑」。
+     紫色挪到中段，右下收青绿。 */
+  const DEFAULT_FROST_BG = 'linear-gradient(135deg,#82c7fb 0%,#7f8bf8 48%,#4ad3c8 100%)';
   function applyBackground() {
     const bg = localStorage.getItem('gw_bg') || '';
     const html = document.documentElement;

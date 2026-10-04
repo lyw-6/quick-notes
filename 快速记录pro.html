@@ -2395,15 +2395,16 @@ body.notes-mode #wordCount { display:none; }
    只有「便签编辑态」才让它 flex:1 去吃剩余宽度，把标题撑开。 */
 .h-left { display:flex; align-items:center; gap:6px; min-width:0; flex:none; }
 body.notes-mode:not(.notes-list) .h-left { flex:1 1 auto; }
-/* 便签列表态的左端组不再是空的 —— 里面装着抽屉按钮（#nvMenuBtn），所以**不能**整组 display:none。
-   那条「空组必须拿掉」的规矩只对「标签模式」成立：那里左端确实一个字都没有，
-   留着 0 宽度会让它成为 flex 首项，顶栏 space-between 把中间的胶囊挤到右边（实测 x=10 → 310）。 */
-body:not(.notes-mode) .h-left { display:none; }
-/* 便签模式两态的顶栏左端现在是「抽屉按钮（+ 编辑态的返回键与标题）」，真的有内容，
-   不再是「空组占位」——那才是必须整组 display:none 的情形（见上面那条）。 */
+/* 2026-10-04：标签模式左端也不再是空白 —— 装上「文档侧边栏」的 ☰（置顶/全部文档/回收站/导出）。
+   .h-left 里 #wordCount 仍 display:none、#nvBackBtn 与 #nvEdTitle 只在便签编辑态有内容，
+   所以标签模式下这一组只占 ☰ 一个按钮的宽度。
+   ⚠️ 移动端（≤839px 胶囊退到最左）现在会变成「☰ + 胶囊 + 右组」，与便签列表态同构 —— 这是有意的。 */
+body:not(.notes-mode) .h-left { display:flex; }
 /* 顶栏两枚便签专属按钮：抽屉（两态都显示）、搜索 + ⋯（仅列表态，编辑态没有列表可搜/可排） */
+/* 抽屉按钮：便签模式与标签模式都要（2026-10-04 起标签模式左端也装上文档侧边栏入口） */
 #nvMenuBtn { display:none; }
-body.notes-mode #nvMenuBtn { display:inline-flex; }
+body.notes-mode #nvMenuBtn,
+body:not(.notes-mode) #nvMenuBtn { display:inline-flex; }
 .icon-btn.nv-list-only { display:none; }
 body.notes-mode.notes-list .icon-btn.nv-list-only { display:inline-flex; }
 
@@ -2503,6 +2504,23 @@ body.nv-searching #nvSearchBtn { display:none !important; }
 /* 回收站：不用「其他」分类，margin-top:auto 把它压到抽屉最底部 */
 .nv-dr-bin { margin-top:auto; }
 .nv-dr-bin .cnt { min-width:20px; text-align:center; padding:1px 6px; border-radius:999px; background:var(--tool-h); }
+/* ---- 标签模式的文档侧边栏（2026-10-04）----
+   与便签模式的「分组」区互斥显示：标签模式看文档，便签模式看分组。 */
+.nv-dr-docs { display:none; }
+body:not(.notes-mode) .nv-dr-docs { display:block; }
+body:not(.notes-mode) #nvDrGroupSec { display:none; }
+body.notes-mode .nv-dr-act { display:none; }   /* 导出入口只给标签模式 */
+.nv-dr-doc { display:flex; align-items:center; gap:8px; padding:9px 10px; border-radius:10px;
+  border:none; background:transparent; color:var(--t); font:inherit; font-size:14px; cursor:pointer;
+  text-align:left; width:100%; -webkit-appearance:none; appearance:none; }
+.nv-dr-doc:hover { background:var(--tool-h); }
+.nv-dr-doc.on { background:color-mix(in srgb, var(--p) 14%, transparent); color:var(--p); font-weight:600; }
+.nv-dr-doc .ic { width:15px; height:15px; color:var(--s); flex:none; }
+.nv-dr-doc.on .ic { color:var(--p); }
+.nv-dr-doc .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nv-dr-doc .tm { font-size:11px; color:var(--s); flex:none; }
+.nv-dr-doc.on .tm { color:var(--p); opacity:.75; }
+.nv-dr-empty { padding:8px 8px 2px; font-size:12px; color:var(--s); }
 
 /* ---- 便签回收站独立页面 ---- */
 .nv-bin-page {
@@ -3070,6 +3088,38 @@ body.notes-mode:not(.notes-list) .view-pill { padding:0 9px; }
    同理适用于选中态分组 chip（.nv-chip.on 的主色字）。 */
 .view-pill, .nv-chip.on { color:color-mix(in srgb, var(--p) 82%, #000); }
 body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
+/* ===================== 垂直标签栏 · Edge 风格（2026-10-04）=====================
+   设置项「垂直标签栏（仅桌面）」→ body.vtabs + localStorage gw_vtabs。
+   ⚠️ 关键：body 原本是 flex column，.tabs-row 在编辑区**上方独立一行**，只把 .doc-tabs 改成
+      column 没用（标签会挤成一条高窄横排）。必须把 body 改成两列 grid，标签栏才真正占左列。
+      body 其它子元素全是 fixed / absolute / display:none，不参与网格，不会串格。
+   仅 ≥768px：390px 竖排标签会占掉一半屏宽，移动端保持横向。
+   ⚠️ 落点指示器要跟着换方向 —— 横向是 inset 3px 0（左/右竖条），竖排是 inset 0 3px（上/下横条）。 */
+@media (min-width:768px) {
+  body.vtabs:not(.notes-mode) {
+    display:grid;
+    grid-template-columns:206px minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr);
+    column-gap:10px;
+  }
+  body.vtabs:not(.notes-mode) header { grid-column:1 / -1; }
+  body.vtabs:not(.notes-mode) .tabs-row { grid-column:1; grid-row:2; align-self:stretch; padding:0 0 6px; }
+  body.vtabs:not(.notes-mode) .card { grid-column:2; grid-row:2; }
+  body.vtabs:not(.notes-mode) .doc-tabs {
+    height:100%; flex-direction:column; align-items:stretch;
+    overflow-x:hidden; overflow-y:auto; gap:3px; padding:0 2px 6px 0;
+  }
+  body.vtabs:not(.notes-mode) .doc-tab { width:100%; border-radius:10px; touch-action:pan-y; }
+  body.vtabs:not(.notes-mode) .doc-tab .tab-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  body.vtabs:not(.notes-mode) .doc-tab.drop-before { box-shadow: inset 0 3px 0 0 var(--p); }
+  body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 var(--p); }
+  body.vtabs:not(.notes-mode) .doc-new { align-self:flex-start; }
+  /* 桌面端工具栏是 position:fixed 限宽居中（left:max(32px,50%-448px)），
+     竖排标签下要让开左侧 206px 那一列，否则会横穿标签栏下方 */
+  /* 工具栏保持原来的全宽限居中，不要给左侧标签栏让位 ——
+     让位后宽度少 216px，末尾的「更多 / 字号」按钮会被推出可视区（要点横向滚动才够得着），
+     图标组也会折成两排。标签栏底部本来就是空白区，工具栏横跨过去反而是 Edge 的观感。 */
+}
 </style>
 <script>
 (function(){
@@ -3404,16 +3454,29 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
 <div class="nv-dr-ov" id="nvDrawerOv">
   <aside class="nv-drawer" id="nvDrawer">
     <div class="nv-dr-head">
-      <span class="nv-dr-title">菜单</span>
+      <span class="nv-dr-title" id="nvDrTitle">菜单</span>
       <button class="nv-dr-x" id="nvDrawerClose" type="button" title="关闭"><svg class="ic"><use href="#i-close"/></svg></button>
     </div>
-    <div class="nv-dr-sec">
+    <!-- 标签模式：文档侧边栏（置顶 + 全部文档）。标签和便签是同一份 docs 数据，
+         所以这里既能当「文档导航」也能补上标签模式缺失的回收站入口。 -->
+    <div class="nv-dr-sec nv-dr-docs" id="nvDrDocs">
+      <div class="nv-dr-h">置顶</div>
+      <div class="nv-dr-list" id="nvDrPinned"></div>
+      <div class="nv-dr-h">全部文档</div>
+      <div class="nv-dr-list" id="nvDrAll"></div>
+    </div>
+    <div class="nv-dr-sec" id="nvDrGroupSec">
       <div class="nv-dr-h">分组</div>
       <div class="nv-dr-list" id="nvDrGroups"></div>
       <button class="nv-dr-add" id="nvDrAddGroup" type="button"><svg class="ic"><use href="#i-plus"/></svg><span>新建分组</span></button>
     </div>
     <!-- 回收站：不要「其他」分类，直接压在抽屉最底部（margin-top:auto） -->
     <button class="nv-dr-row nv-dr-bin" id="nvDrBin" type="button"><svg class="ic"><use href="#i-trash"/></svg><span class="nm">回收站</span><span class="cnt" id="nvBinCnt">0</span></button>
+    <!-- 模板与历史：原来只有工具栏「更多 → 模板管理」一条路（要展开面板才看得到），
+         这里给一个模式级入口；弹窗本身是共用的（模板 / 历史 / 常用语 / 回收站 四个 tab） -->
+    <button class="nv-dr-row" id="nvDrTpl" type="button"><svg class="ic"><use href="#i-tpl-mgr"/></svg><span class="nm">模板与历史</span></button>
+    <!-- 导出：标签模式专用（便签模式已经有 ⋯ 里的「导出全部为 MD」，不重复摆两个入口） -->
+    <button class="nv-dr-row nv-dr-act" id="nvDrExport" type="button"><svg class="ic"><use href="#i-md"/></svg><span class="nm">导出全部为 MD</span></button>
   </aside>
 </div>
 <!-- 便签模式：回收站**独立页面**（不套用标签模式管理弹窗里的那个回收站 tab） -->
@@ -3615,6 +3678,10 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
             <div class="setting-row">
               <span>保留格式粘贴（公众号等带样式）</span>
               <label class="gw-switch"><input type="checkbox" id="keepFormatToggle"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+              <span>垂直标签栏（Edge 风格，仅桌面）</span>
+              <label class="gw-switch"><input type="checkbox" id="vTabsToggle"><span class="slider"></span></label>
             </div>
           </div>
         </div>
@@ -4921,8 +4988,48 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
     ov.classList.toggle('on', open);
     if (open) nvRenderDrawer();
   }
+  // ---------- 垂直标签栏（Edge 风格，2026-10-04） ----------
+  // 设置项开关 → body.vtabs。CSS 只在 ≥768px 生效（390px 竖排会吃掉一半屏宽），
+  // 这里只管打标记；关闭时移除 class，横向标签栏原样回来。
+  function applyVTabs() {
+    let on = false;
+    try { on = localStorage.getItem('gw_vtabs') === '1'; } catch (e) {}
+    document.body.classList.toggle('vtabs', on);
+  }
+
+  // 拖拽落点方向：横向标签栏用 clientX 比，垂直标签栏改用 clientY 比
+  function tabDropAfter(x, y, rect) {
+    if (document.body.classList.contains('vtabs')) return (y - rect.top) > rect.height / 2;
+    return (x - rect.left) > rect.width / 2;
+  }
+
   function nvRenderDrawer() {
+    // 标签模式：抽屉是「文档侧边栏」（置顶 + 全部文档），标题也换掉，避免沿用「菜单」这个泛称
+    if (!nvIsNotes()) {
+      const t = $('nvDrTitle');
+      if (t) t.textContent = '文档';
+      const pin = $('nvDrPinned'), all = $('nvDrAll');
+      const ids = Object.keys(docs).sort(function(a, b) { return ((docs[b] && docs[b].ts) || 0) - ((docs[a] && docs[a].ts) || 0); });
+      const row = function(id) {
+        const d = docs[id] || {};
+        return '<button class="nv-dr-doc' + (id === activeId ? ' on' : '') + '" type="button" data-dgoid="' + id + '">' +
+          '<svg class="ic"><use href="#' + (d.pinned ? 'i-pin-tab' : 'i-md') + '"/></svg>' +
+          '<span class="nm">' + escapeHtml(d.title || '未命名') + '</span>' +
+          '<span class="tm">' + nvDrawerFmt(d.ts) + '</span></button>';
+      };
+      // 「全部文档」排除置顶项 —— 置顶那几条已经在上面出现过，重复列出来是冗余
+      const pids = ids.filter(function(id) { return docs[id] && docs[id].pinned; });
+      const rids = ids.filter(function(id) { return !(docs[id] && docs[id].pinned); });
+      if (pin) pin.innerHTML = pids.length ? pids.map(row).join('') : '<div class="nv-dr-empty">暂无置顶文档</div>';
+      if (all) all.innerHTML = rids.length ? rids.map(row).join('') : '<div class="nv-dr-empty">没有其它文档</div>';
+      const c = $('nvBinCnt');
+      if (c) c.textContent = loadJSON('gw_bin', []).length;
+      return;
+    }
     const box = $('nvDrGroups');
+    // 切回便签模式时把抽屉标题复位成「菜单」（标签模式会改成「文档」）
+    const tt = $('nvDrTitle');
+    if (tt) tt.textContent = '菜单';
     if (box) {
       if (!nvGroups.length) {
         box.innerHTML = '<div class="nv-dr-empty">还没有分组，用下面的「新建分组」建一个。</div>';
@@ -4941,6 +5048,17 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
     }
     const c = $('nvBinCnt');
     if (c) c.textContent = loadJSON('gw_bin', []).length;
+  }
+
+  // 抽屉里的文档时间：列表侧栏要能区分「今天/更早」，所以比卡片上的 nvFmt 更细（带日期）
+  function nvDrawerFmt(ts) {
+    const d = new Date(ts || Date.now()), now = new Date(), p = function(n) { return n < 10 ? '0' + n : '' + n; };
+    const hm = p(d.getHours()) + ':' + p(d.getMinutes());
+    const sameYear = d.getFullYear() === now.getFullYear();
+    const sameDay = sameYear && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    if (sameDay) return hm;
+    if (sameYear) return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
+    return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
   }
 
   // ---------- 回收站：便签模式独立页面（不套用标签模式管理弹窗里的回收站 tab） ----------
@@ -5518,6 +5636,27 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
     if (drAdd) drAdd.addEventListener('click', function() { nvDrawerToggle(false); nvOpenGroups(); });
     const drBin = $('nvDrBin');
     if (drBin) drBin.addEventListener('click', nvOpenBin);
+    // 标签模式文档侧边栏：点条目切文档、点导出导全部（2026-10-04）
+    const drDocs = $('nvDrDocs');
+    if (drDocs) drDocs.addEventListener('click', function(e) {
+      const r = e.target.closest ? e.target.closest('[data-dgoid]') : null;
+      if (!r) return;
+      const id = r.getAttribute('data-dgoid');
+      nvDrawerToggle(false);
+      if (id && docs[id]) switchDoc(id);
+    });
+    const drExport = $('nvDrExport');
+    if (drExport) drExport.addEventListener('click', function() {
+      nvDrawerToggle(false);
+      nvExportAll();
+    });
+    // 抽屉里的「模板与历史」：打开共用的模板管理弹窗（模板 / 历史 / 常用语 / 回收站）
+    const drTpl = $('nvDrTpl');
+    if (drTpl) drTpl.addEventListener('click', function() {
+      nvDrawerToggle(false);
+      if (typeof openManager === 'function') openManager();
+      else toast('模板管理暂不可用');
+    });
     const binBack = $('nvBinBack');
     if (binBack) binBack.addEventListener('click', nvCloseBin);
     const binClear = $('nvBinClear');
@@ -10604,7 +10743,7 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
         const ttab = inside ? getTabAtPoint(x, y, d.id) : null;
         if (ttab) {
           const rect = ttab.getBoundingClientRect();
-          ttab.classList.add((x - rect.left) > rect.width / 2 ? 'drop-after' : 'drop-before');
+          ttab.classList.add(tabDropAfter(x, y, rect) ? 'drop-after' : 'drop-before');
         }
       }
       function endDrag(x, y, silent) {
@@ -10625,7 +10764,7 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
         const ttab = getTabAtPoint(x, y, d.id);
         if (ttab && ttab.dataset.doc !== d.id) {
           const rect = ttab.getBoundingClientRect();
-          const r = reorderDocs(d.id, ttab.dataset.doc, (x - rect.left) > rect.width / 2);
+          const r = reorderDocs(d.id, ttab.dataset.doc, tabDropAfter(x, y, rect));
           if (r === 'ok') { saveDocs(); renderTabs(); toast('已调整顺序'); }
           else if (r === 'cross') { toast(docs[d.id].pinned ? '置顶标签固定在置顶区（取消置顶后可移动）' : '普通标签不能移到置顶区'); }
         }
@@ -10807,6 +10946,14 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
       keepFormat = this.checked;
       localStorage.setItem('gw_keepFormat', keepFormat ? '1' : '0');
       toast(keepFormat ? '已开启：保留格式粘贴' : '已关闭：保留格式');
+    });
+
+    // 垂直标签栏（Edge 风格，仅桌面 ≥768px 生效）
+    const vtToggle = $('vTabsToggle');
+    if (vtToggle) vtToggle.addEventListener('change', function() {
+      try { localStorage.setItem('gw_vtabs', this.checked ? '1' : '0'); } catch (e) {}
+      applyVTabs();
+      toast(this.checked ? '已开启：垂直标签栏（仅桌面）' : '已关闭：垂直标签栏');
     });
 
     // 工具栏位置（顶部/底部）
@@ -12321,6 +12468,10 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
     keepFormat = localStorage.getItem('gw_keepFormat') !== '0'; // 默认开启保留格式
     const pdToggle = $('pasteDirectToggle'); if (pdToggle) pdToggle.checked = pasteDirect;
     const kfToggle = $('keepFormatToggle'); if (kfToggle) kfToggle.checked = keepFormat;
+    // 垂直标签栏：回填开关 + 打 body.vtabs 标记（CSS 只在 ≥768px 生效）
+    const vtOn = localStorage.getItem('gw_vtabs') === '1';
+    const vtTg = $('vTabsToggle'); if (vtTg) vtTg.checked = vtOn;
+    applyVTabs();
 
     bindEvents();
 

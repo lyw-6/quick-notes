@@ -3143,7 +3143,10 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
   /* ⚠️ left 要跟着**纸面**走（body 居中，left 缘 = 50% - 448px，与工具栏同一公式），
      不能贴视口左边 —— 那样侧栏与编辑纸之间会空出 180 多 px，看着不像一个系统。 */
   body.vtabs:not(.notes-mode) .tabs-row {
-    left:calc(max(8px, 50% - 448px) + 8px);
+    /* ⚠️ 基准必须与工具栏的限宽公式**完全一致**（max(32px, 50% - 448px)），
+       只多 8px 间隙。原来这里写 max(8px, …)，900px 视口下侧栏落在 16、工具栏在 32，
+       侧栏反而探到工具栏左侧 → 看起来「左边多出一块」。 */
+    left:calc(max(32px, 50% - 448px) + 8px);
     top:64px; bottom:auto; width:56px;
     max-height:calc(100dvh - 152px);   /* 64 顶 + 88 底 + 8 余量 */
   }
@@ -3155,38 +3158,47 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
 }
 @media (max-width:767px) {
   body.vtabs:not(.notes-mode) .tabs-row {
-    left:4px; top:calc(56px + env(safe-area-inset-top, 0px));
+    left:12px; top:calc(56px + env(safe-area-inset-top, 0px));
     bottom:auto; width:48px;
     max-height:calc(100dvh - 150px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   }
+  /* 触屏用 :focus-within（点一下展开），鼠标用 :hover —— 两者都要有。
+     原来只写 focus-within，鼠标划过去会停在「半展开」中间态：面板还是 48px 但标题已恢复显示，
+     结果标题被压成 0 宽（用户截图里那一列只剩图钉和 ×）。 */
+  body.vtabs:not(.notes-mode) .tabs-row:hover,
   body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:200px; }
   body.vtabs:not(.notes-mode) .card { margin-left:52px; }
 }
 
 /* ---------- 底部（标签条浮在工具栏上方，同宽同款胶囊底 = 底部双条） ---------- */
 @media (min-width:768px) {
-  body.btabs:not(.notes-mode) { padding-bottom:138px; }
+  /* 纸底 vh-142 / 标签条 vh-94..vh-134 / 工具栏 vh-80..vh-24
+     → 纸到标签 8px、标签到工具栏 14px（原来只有 6px，看着像撞在一起） */
+  body.btabs:not(.notes-mode) { padding-bottom:142px; }
   body.btabs:not(.notes-mode) .tabs-row {
     position:fixed; left:max(32px, calc(50% - 448px)); right:max(32px, calc(50% - 448px));
-    bottom:86px; z-index:95; padding:0 10px; align-items:center;
+    bottom:94px; z-index:95; padding:0 10px; align-items:center;
     /* 标签栏要比工具栏「轻」一档：底更透、描边去掉、阴影减半 —— 否则底部两条一样重，抢焦点 */
-    border-radius:22px;
-    background:color-mix(in srgb, var(--ed-bg) 72%, transparent);
+    /* 方标签不该装在圆胶囊里：圆角收到 12（与 .doc-tab 的 10 同一档），
+       底色只留一层极浅的墨色托盘、去掉描边与阴影 —— 底部只有工具栏一条「胶囊」，
+       标签行是「方」的语言，两层不再互相打架。 */
+    border-radius:12px;
+    background:color-mix(in srgb, var(--tool) 55%, transparent);
     border:1px solid transparent;
-    box-shadow:0 3px 12px rgba(0,0,0,.07);
+    box-shadow:none;
   }
   body.btabs:not(.notes-mode) .doc-tabs { padding:0 2px; }
 }
 @media (max-width:767px) {
-  body.btabs:not(.notes-mode) { padding-bottom:calc(132px + env(safe-area-inset-bottom, 0px)); }
+  body.btabs:not(.notes-mode) { padding-bottom:calc(134px + env(safe-area-inset-bottom, 0px)); }
   body.btabs:not(.notes-mode) .tabs-row {
     position:fixed; left:12px; right:12px;
-    bottom:calc(80px + env(safe-area-inset-bottom, 0px));
+    bottom:calc(86px + env(safe-area-inset-bottom, 0px));
     z-index:95; padding:0 8px; align-items:center;
-    border-radius:20px;
-    background:color-mix(in srgb, var(--ed-bg) 72%, transparent);
+    border-radius:12px;
+    background:color-mix(in srgb, var(--tool) 55%, transparent);
     border:1px solid transparent;
-    box-shadow:0 3px 12px rgba(0,0,0,.07);
+    box-shadow:none;
   }
   body.btabs:not(.notes-mode) .doc-tabs { padding:0 2px; }
 }

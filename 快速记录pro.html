@@ -15,7 +15,7 @@ html.kb-lock { --kbh: 0px !important; }
   --p-h: #4096ff;
   --bg: #f0f2f5;
   --t: #1f1f1f;
-  --s: #8c8c8c;
+  --s: #616a76;   /* 2026-10-04 加深：#8c8c8c 在白底只有 3.36:1，摘要/时间戳/分组标签/分区计数全线不达 AA。#616a76 = 5.48(白) / 4.89(灰底) */
   --card: #fff;
   --ed-bg: #fafafa;
   --border: #e2e8f0;
@@ -35,7 +35,7 @@ html.kb-lock { --kbh: 0px !important; }
   --p-h: #60a5fa;
   --bg: #0b1120;
   --t: #f1f5f9;
-  --s: #64748b;
+  --s: #94a3b8;   /* 2026-10-04 加深：#64748b 在卡片 #1e293b 上仅 3.07:1 → 5.71 */
   --card: #1e293b;
   --ed-bg: #0f172a;
   --border: #334155;
@@ -52,7 +52,7 @@ html.kb-lock { --kbh: 0px !important; }
   --p: #6366f1;
   --p-h: #818cf8;
   --t: #1f2937;
-  --s: #51607a;
+  --s: #4a5768;   /* 2026-10-04 加深，与新的靛紫主色同族；白底 7.36 */
   --frost-blur: 14px;
   --frost-alpha: 0.55;
   --card: rgba(255,255,255, calc(var(--frost-alpha) * 1.31));
@@ -72,7 +72,7 @@ html.kb-lock { --kbh: 0px !important; }
   --p-h: #4cc07a;
   --bg: #eef7f0;
   --t: #1f2e24;
-  --s: #6b8c75;
+  --s: #556f60;   /* 2026-10-04 加深：#6b8c75 白底 3.73 → 5.48，护眼绿仍保持低饱和 */
   --card: #ffffff;
   --ed-bg: #f8fbf9;
   --border: #d4e4d8;
@@ -2995,6 +2995,80 @@ header .right { margin-left:auto; }
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+/* ===================== 卡片浮起感 + 尺寸体系归并（2026-10-04 审计）=====================
+   ① 浅色下 .nv-item 只有 1px 边框、frost 却有玻璃投影 → 同一张卡在两个主题下「浮起感」不一致。
+      浅色系（light/green）网格态补一层极淡投影；列表视图行靠分隔线，不加。
+   ② 图标尺寸此前 6 档（12 分区标题 / 13 卡片图钉 / 14 胶囊 / 17 主题钮 / 20 顶栏 / 24 FAB），
+      归并成 14 / 17 / 20 三档（FAB 24 为主操作特例，保留）。
+   ③ 圆角归并：便签卡 12 → 14（与纸面 14px 同档），容器/行保持 10。 */
+[data-theme="light"] .nv-list.detail .nv-item,
+[data-theme="green"] .nv-list.detail .nv-item {
+  box-shadow: 0 1px 2px rgba(20,30,60,.055);
+}
+.nv-sec .ic, .nv-item .ic { width:14px; height:14px; }
+.nv-item { border-radius:14px; }
+/* 标签模式搜索无匹配时的占位提示（标签栏被过滤空时给出解释，别让用户以为搜索坏了） */
+.tab-none {
+  flex:none; align-self:center; padding:0 12px; font-size:12px; color:var(--s); white-space:nowrap;
+}
+/* ===================== 触控热区放大（2026-10-04 审计）=====================
+   实测偏小（390px）：主题钮 34、视图胶囊高 30、分组 chip 高 29、多选条图标钮 34、
+   抽屉关闭 30、抽屉分组编辑/删除 30。移动端都低于 36px 的舒适下限。
+   分两条路子：
+   ① 透明底控件（主题钮/图标钮/图钉）→ 直接扩尺寸，视觉零变化；
+   ② 有可见底的控件（胶囊/chip/清除钮/关闭钮）→ 加 padding，底色等比变大，属合理放大。
+   ⚠️ 不能用 ::after 伪元素做热区：顶栏 .right、.nv-groups、.nv-list、.doc-tabs 全是
+      overflow:auto/hidden（伪元素会被裁掉），且 .right 在标签栏 overflow 下会连带相邻按钮一起裁。
+   注：移动端 .icon-btn 早前已是 40×40（gap 10px），此处不重复。 */
+@media (max-width:767px) {
+  /* 标签模式移动端也要藏「步骤 N/M」徽标：它连同内边距占 89px，是 390px 顶栏溢出 20px 的主因
+     （原先的「≤767px 隐藏 .meta」只写在便签模式分支下，标签模式漏了；桌面端保持显示）。 */
+  header .right .meta { display:none; }
+  /* 顶栏在 390px 上已经贴着极限（加一个搜索钮就溢出 4px、编辑态标题被挤到 44px），
+     所以「放大热区」与「省宽度」要一起配平：钮 36（仍 ≥36 达标）+ gap 8 + 编辑态纯图标胶囊收窄，
+     五项合计省出 28px，标题回到 72px。⚠️ 别再单独调大 .icon-btn，会连锁挤掉标题。 */
+  header .right { gap:8px; }
+  .icon-btn { width:36px; height:36px; }
+  .theme-btn { width:36px; height:36px; }   /* 34 → 36 */
+  .nv-sb-ic { width:40px; height:40px; }    /* 多选条在纸面内，不占顶栏，可放到 40 */
+  .nv-ga { width:36px; height:36px; }        /* 30 → 36 */
+  .nv-dr-x { width:36px; height:36px; }      /* 30 → 36 */
+  /* 抽屉分组行内的重命名/删除（这两个按钮没有 .nv-ga 类，得单独点名） */
+  .nv-dr-act button { width:36px; height:36px; }
+  .nv-sb-x { width:36px; height:36px; }
+  .view-pill { height:36px; min-width:36px; padding:0 12px; }   /* 30 → 36；高度不影响标题宽度（宽度由 padding 决定） */
+  /* 编辑态胶囊是纯图标（文字已隐藏），padding 再收窄 4px 给标题让位 */
+  body.notes-mode:not(.notes-list) .view-pill { padding:0 8px; }
+  .nv-chip { padding:8px 14px; min-height:36px; display:inline-flex; align-items:center; }   /* 高 29 → 36 */
+  .nv-empty-clear { padding:11px 20px; }
+  .nv-sheet-close { padding:14px 10px; }
+  .doc-new { width:36px; height:36px; font-size:1.15rem; }   /* 26 → 36 */
+  .doc-tab .pin { width:32px; height:32px; } /* 24 → 32，透明底视觉不变 */
+  /* 标签滚动箭头：#mainToolbar .tarrow(1,0,1) 的特异性高于裸 .tarrow，这里必须也带 id 才压得住 */
+  #mainToolbar .tarrow { width:30px; }  /* 26 → 30 */
+}
+/* 桌面端：只补明显偏小的两处，鼠标精度够用，不必放大到移动端那么宽
+   ⚠️ 必须用 min-width 限定 —— 写成裸规则会因写在移动端 media 之后而反过来覆盖掉移动端那档。 */
+@media (min-width:768px) {
+  .view-pill { height:32px; }                /* 28 → 32，与 34px 图标钮协调 */
+  .nv-ga { width:32px; height:32px; }
+  .nv-dr-x { width:32px; height:32px; }
+}
+body.notes-mode:not(.notes-list) .view-pill { padding:0 9px; }
+/* chip / 抽屉行内的计数：选中态原本是主色 + opacity .75（合成后仅 3.66:1）→ 改回次要色。
+   要写成 .nv-chip.on .cnt / .nv-dr-row.on .cnt 才能压过它们的 (0,3,0) 规则。 */
+.nv-chip .cnt, .nv-chip.on .cnt,
+.nv-dr-row .cnt, .nv-dr-row.on .cnt { color:var(--s); opacity:1; }
+
+
+/* 标签模式也显示搜索放大镜（2026-10-04 新增标签搜索）：
+   .nv-list-only 只覆盖「便签列表态」，标签模式要靠这条；便签编辑态仍不显示（列表不在屏上，搜了看不见）。
+   ⚠️ 必须只点名 #nvSearchBtn —— 写成 .icon-btn.nv-list-only 会把便签专属的 ⋯（视图/排序）也放出来。 */
+/* 视图胶囊：主色字在「主色 14% 染底」上只有 3.66:1（AA 要 4.5）→ 字色压暗 18%。
+   只压字不动底色，胶囊的 tinted 观感不变；四主题通用（含 frost 的独立玻璃规则，因为它也用 var(--p)）。
+   同理适用于选中态分组 chip（.nv-chip.on 的主色字）。 */
+.view-pill, .nv-chip.on { color:color-mix(in srgb, var(--p) 82%, #000); }
+body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
 </style>
 <script>
 (function(){
@@ -3293,7 +3367,7 @@ header .right { margin-left:auto; }
     <button class="icon-btn" id="undoBtn" type="button" title="撤销 (Ctrl+Z)"><svg class="ic"><use href="#i-undo"/></svg></button>
     <button class="icon-btn" id="redoBtn" type="button" title="重做 (Ctrl+Y)"><svg class="ic"><use href="#i-redo"/></svg></button>
     <!-- 便签列表态专属：搜索入口 + 「视图 / 排序」下拉（默认隐藏，见 CSS） -->
-    <button class="icon-btn nv-list-only" id="nvSearchBtn" type="button" title="搜索笔记"><svg class="ic"><use href="#i-search"/></svg></button>
+    <button class="icon-btn nv-list-only" id="nvSearchBtn" type="button" title="搜索笔记 / 标签"><svg class="ic"><use href="#i-search"/></svg></button>
     <button class="icon-btn nv-list-only" id="nvMoreBtn" type="button" title="视图与排序"><svg class="ic"><use href="#i-dots-h"/></svg></button>
     <div class="theme-wrap" id="themeWrap">
       <button class="theme-btn" id="themeBtn" type="button" title="主题：浅色（点击切换到其它主题）"><svg class="ic"><use href="#i-moon"/></svg></button>
@@ -3314,8 +3388,13 @@ header .right { margin-left:auto; }
     <div class="nv-dd-sep"></div>
     <div class="nv-dd-h">排序</div>
     <button type="button" data-nvsort="ts"><svg class="ic"><use href="#i-clock"/></svg><span>编辑时间</span><svg class="ck ic"><use href="#i-check"/></svg></button>
-    <button type="button" data-nvsort="title"><svg class="ic"><use href="#i-align-l"/></svg><span>文件名称</span><svg class="ck ic"><use href="#i-check"/></svg></button>
-  </div>
+      <button type="button" data-nvsort="title"><svg class="ic"><use href="#i-align-l"/></svg><span>文件名称</span><svg class="ck ic"><use href="#i-check"/></svg></button>
+      <div class="nv-dd-sep"></div>
+      <!-- 2026-10-04：便签模式原先没有导出入口（导出 MD 只挂在标签模式的更多面板）。
+           列表态一次把当前可见（分组 + 搜索过滤后）的笔记拼成一个 md，编辑态仍用「更多」里的导出 MD。 -->
+      <div class="nv-dd-h">导出</div>
+      <button type="button" data-nvexport="all"><svg class="ic"><use href="#i-md"/></svg><span>导出全部为 MD</span></button>
+    </div>
   <!-- 长按「步骤 1/1」徽标弹出的字数统计（原来常驻顶栏左端那块文字）。
        必须挂在 header 下、不能塞进 .right —— .right 有 overflow:hidden，气泡会被裁掉 -->
   <div class="wc-tip" id="wcTip"></div>
@@ -4367,8 +4446,12 @@ header .right { margin-left:auto; }
     bindTabsOverflow(bar);
     let html = '';
     const pinIcon = '<svg class="ic"><use href="#i-pin-tab"/></svg>';
+    // 2026-10-04：标签模式搜索过滤（与便签搜索共用 nvQuery，匹配「标题 + 正文」全文）。
+    // 无匹配时留一个占位提示，避免标签栏整条空白、用户以为搜索坏了。
+    const qTab = String(typeof nvQuery === 'string' ? nvQuery : '').trim().toLowerCase();
+    const tabHit = id => !qTab || ((docs[id].title || '') + ' ' + nvText(docs[id].html)).toLowerCase().indexOf(qTab) >= 0;
     // 置顶文档排前，其余保持原顺序（稳定排序）
-    const ids = Object.keys(docs).sort((a, b) => (docs[b].pinned ? 1 : 0) - (docs[a].pinned ? 1 : 0));
+    const ids = Object.keys(docs).filter(tabHit).sort((a, b) => (docs[b].pinned ? 1 : 0) - (docs[a].pinned ? 1 : 0));
     for (const id of ids) {
       const doc = docs[id];
       const active = id === activeId ? ' active' : '';
@@ -4379,6 +4462,7 @@ header .right { margin-left:auto; }
         '<span class="pin' + (doc.pinned ? ' on' : '') + '" data-pin="' + id + '" title="' + (doc.pinned ? '取消置顶' : '置顶') + '">' + pinIcon + '</span>' +
         '<span class="x" data-close="' + id + '" title="关闭"><svg class="ic"><use href="#i-close"/></svg></span></div>';
     }
+    if (qTab && !ids.length) html += '<span class="tab-none">无匹配标签</span>';
     html += '<button class="doc-new" id="newDocBtn" type="button" title="新建文档">+</button>';
     // 重渲染前记住滚动位置：原来每次都 scrollLeft=scrollWidth（强制跳到最右），
     // 标签一多就永远回不到前面的标签，且每次切文档都会把视口拽走。
@@ -4686,6 +4770,29 @@ header .right { margin-left:auto; }
     return nvSortIds(ids);
   }
 
+  // 2026-10-04：便签列表 ⋯ →「导出全部为 MD」（此前导出 MD 只挂在标签模式的更多面板里）。
+  // 导出范围 = 当前可见（分组 + 搜索过滤 + 排序），与屏幕所见一致；置顶的排前面。
+  function nvExportAll() {
+    const ids = nvVisibleIds();
+    if (!ids.length) { toast('没有可导出的笔记'); return; }
+    const parts = ids.map(function(id) {
+      const d = docs[id] || {};
+      const box = document.createElement('div');
+      box.innerHTML = d.html || '';
+      const body = toMd(box).replace(/\u200B/g, '').trim();
+      return '## ' + (d.title || '未命名') + '\n\n' + (body || '（空）');
+    });
+    const head = '# 便签导出（' + fmtDate('YYYY-MM-DD') + '）\n\n共 ' + ids.length + ' 条\n\n';
+    const blob = new Blob([head + parts.join('\n\n---\n\n')], { type: 'text/markdown;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '便签_' + fmtDate('YYYY-MM-DD') + '.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast('已导出 ' + ids.length + ' 条笔记');
+  }
+
   function renderNotesGroups() {
     const box = $('nvGroups');
     if (!box) return;
@@ -4767,17 +4874,20 @@ header .right { margin-left:auto; }
   function nvRenderAll() { renderNotesGroups(); renderNotes(); }
 
   // ---------- 顶栏：搜索（原地顶掉视图胶囊）/ ⋯ 下拉 / 侧边抽屉 ----------
+  // 2026-10-04：标签模式也支持搜索（原来这里 if (!nvIsNotes()) return; 直接把放大镜挡在便签模式外，
+  // 标签一多只能横向滚）。两种模式共用同一份 nvQuery 与 #hdSearchInput：
+  //   便签模式 → 过滤卡片列表（原有行为）；标签模式 → 过滤标签栏 + 无匹配占位（renderTabs 内处理）。
   function nvSearchEnter() {
-    if (!nvIsNotes()) return;
     document.body.classList.add('nv-searching');
     const i = $('hdSearchInput');
     if (i) { i.value = nvQuery; i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+    if (!nvIsNotes()) renderTabs();
   }
   function nvSearchExit() {
     document.body.classList.remove('nv-searching');
     const i = $('hdSearchInput');
     if (i) i.value = '';
-    if (nvQuery) { nvQuery = ''; nvRenderAll(); }
+    if (nvQuery) { nvQuery = ''; nvRenderAll(); if (!nvIsNotes()) renderTabs(); }
   }
 
   function nvSyncMoreDd() {
@@ -4965,6 +5075,8 @@ header .right { margin-left:auto; }
     nvMode = m;
     localStorage.setItem('gw_viewmode', m);
     applyViewMode();
+    // 标签模式下若还留着搜索词，标签栏要跟着过滤态走（否则看起来像搜索失效了）
+    if (m === 'tabs' && nvQuery) renderTabs();
     toast(m === 'notes' ? '已切换到便签模式' : '已切换到标签模式');
   }
 
@@ -5328,7 +5440,11 @@ header .right { margin-left:auto; }
     const sBtn = $('nvSearchBtn');
     if (sBtn) sBtn.addEventListener('click', nvSearchEnter);
     const sIn = $('hdSearchInput');
-    if (sIn) sIn.addEventListener('input', function() { nvQuery = sIn.value; nvRenderAll(); });
+    if (sIn) sIn.addEventListener('input', function() {
+      nvQuery = sIn.value;
+      nvRenderAll();
+      if (!nvIsNotes()) renderTabs();   // 标签模式：同步过滤标签栏
+    });
     if (sIn) sIn.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') nvSearchExit();
       if (e.key === 'Enter') sIn.blur();
@@ -5355,6 +5471,9 @@ header .right { margin-left:auto; }
         renderNotes(); nvSyncMoreDd();
         toast(nvSort === 'ts' ? '按编辑时间排序' : '按文件名称排序');
         nvMoreToggle(false);
+      } else if (e.target.closest && e.target.closest('button[data-nvexport]')) {
+        nvMoreToggle(false);
+        nvExportAll();
       }
     });
     // 点别处 / 换视图 / 按 Esc 都收起下拉与抽屉
@@ -12064,14 +12183,35 @@ header .right { margin-left:auto; }
         if (txLink && txLink.style.display !== 'none') { hideExpand(); return; }
         const tableMenu = $('tableMenu');
         if (tableMenu && tableMenu.classList.contains('on')) { closeTableMenu(); return; }
+
+        // 2026-10-04：便签模式的浮层也纳入 Esc 逐层退出（⋯ 下拉 → 抽屉 → 回收站页 → 顶栏搜索 → 多选）
+        const nvDd = $('nvMoreDd');
+        if (nvDd && nvDd.classList.contains('open')) { nvMoreToggle(false); return; }
+        const drOv = $('nvDrawerOv');
+        if (drOv && drOv.classList.contains('on')) { nvDrawerToggle(false); return; }
+        const binPg = $('nvBinPage');
+        if (binPg && binPg.classList.contains('on')) { nvCloseBin(); return; }
+        if (document.body.classList.contains('nv-searching')) { nvSearchExit(); return; }
+        if (nvSelMode) { nvExitSel(); return; }
       }
 
       if (!e.ctrlKey && !e.metaKey) return;
+
+      // Ctrl/Cmd+F 搜索：任何模式都能开（阅读模式也允许，这里放在阅读模式拦截之前）
+      if (e.key.toLowerCase() === 'f' && !e.shiftKey) { e.preventDefault(); nvSearchEnter(); return; }
 
       // 阅读模式：禁止任何修改型快捷键（撤销/重做/格式等），仅保留 Esc 退出
       if (document.body.classList.contains('reading')) return;
 
       const k = e.key.toLowerCase();
+      if (k === 'n') {
+        // Ctrl/Cmd+N 新建：便签模式建便签、标签模式建文档。
+        // 编辑态也响应（nvNewNote 内部会先 saveCurrentDoc，不会丢当前编辑内容）
+        e.preventDefault();
+        if (nvIsNotes()) nvNewNote();
+        else newDoc();
+        return;
+      }
       if (k === 'z') {
         e.preventDefault();
         undo();

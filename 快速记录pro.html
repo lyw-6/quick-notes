@@ -2361,13 +2361,14 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
   flex-direction:column;
   /* 新建按钮 / 多选操作条都改成相对本面板定位（absolute），见下方 .nv-fab / .nv-selbar */
   position:relative;
-  /* ★壁纸下这块灰色面板必须是「圆角纸面」，不能是直角矩形：
-     标签模式的编辑纸（.editor-wrap，radius 14px）是圆角浮在壁纸上的，
-     便签列表页这块灰底同理 —— 直角会在壁纸边缘留下一圈生硬的 90° 灰角。
+  /* ★这块灰色面板必须是「圆角纸面」，四角都是：
+     标签模式的编辑纸（.editor-wrap，radius 14px）是圆角浮在壁纸上的，便签列表页这块灰底同理。
      半径取 22px：内置那枚白色搜索卡（外缘内缩 12px、自身圆角 14/16px）与纸面
      近似同心（22 - 12 = 10 ≈ 14），两层圆弧不会「贴在一起」显得是画错了。
-     底下没有不透明方形子元素压角（搜索卡四面内缩、列表透明），所以不需要 overflow:hidden。 */
-  border-radius:22px 22px 0 0;
+     ⚠️ 2026-10-04 用户反馈「圆角怎么只有上方有」—— 原来下两角是 0（理由是 flex:1 永远贴窗口底边），
+     但磨砂/壁纸这种有背景的底下，直角像被屏幕边缘「切掉」。改成四角一致。
+     没有不透明方形子元素压角（搜索卡四面内缩、列表透明），所以不需要 overflow:hidden。 */
+  border-radius:22px;
 }
 body.notes-mode.notes-list #notesView { display:flex; }
 /* 列表态：隐藏编辑卡片，只留笔记列表（进入某条笔记后自动恢复）。

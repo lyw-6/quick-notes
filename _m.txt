@@ -1,0 +1,11 @@
+fix(tabs): 底部标签条真正嵌进编辑区内部（.editor-wrap 而非 .card）
+
+- 上一版把标签条移进 .card，但 .card 只是透明容器 —— 真正的纸是 .editor-wrap
+  （有底色/描边/圆角），所以标签条其实贴在纸外。改为移进 .editor-wrap：
+  它本身 position:relative + overflow:hidden，正好当容器（自带圆角裁切）。
+- 纸内留白也从 .card 挪到 .editor-wrap（padding-bottom 52/50）
+- 实测：标签条父级 = editor-wrap，距纸底 8px，两端在纸的圆角内
+- applyTabPos 的 DOM 挪动加 try/catch + rAF 后重测边界（挪动会改布局）
+- 侧栏去投影 + 顶对齐纸面 + 底按内容收缩（--vtabs-top / --vtabs-bottom 由 JS 实测写入）
+
+回归：八套全绿 + _verify_tabpos 31 + _verify_vt2 18 + _verify_dr 38 + _verify_new 30

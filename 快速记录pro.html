@@ -3191,9 +3191,10 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
 @media (min-width:768px) {
   /* 纸底 vh-86 / 工具栏 vh-80..vh-24 → 纸到工具栏 6px；标签条在**纸内**底部，不再浮在纸外。 */
   body.btabs:not(.notes-mode) { padding-bottom:86px; }
-  body.btabs:not(.notes-mode) .card { position:relative; padding-bottom:52px; }
+  /* 纸内底部留出标签条的高度：.editor-wrap 才是有底色的那层纸 */
+  body.btabs:not(.notes-mode) .editor-wrap { padding-bottom:52px; }
   body.btabs:not(.notes-mode) .tabs-row {
-    /* absolute 挂在 .card（纸）内 → 标签行成为编辑区的一部分，两侧跟着纸走圆角 */
+    /* absolute 挂在 .editor-wrap 内 → 标签行在纸里面，两侧跟着纸的圆角一起裁切 */
     position:absolute; left:10px; right:10px; bottom:8px; z-index:95; padding:0 8px; align-items:center;
     /* 标签栏要比工具栏「轻」一档：底更透、描边去掉、阴影减半 —— 否则底部两条一样重，抢焦点 */
     /* 底部模式这条标签栏已经**嵌在纸内**（DOM 移进 .card、absolute 贴纸底），
@@ -3208,10 +3209,9 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
 }
 @media (max-width:767px) {
   body.btabs:not(.notes-mode) { padding-bottom:calc(80px + env(safe-area-inset-bottom, 0px)); }
-  body.btabs:not(.notes-mode) .card { position:relative; padding-bottom:50px; }
+  body.btabs:not(.notes-mode) .editor-wrap { padding-bottom:50px; }
   body.btabs:not(.notes-mode) .tabs-row {
-    position:absolute; left:8px; right:8px;
-    bottom:calc(6px + env(safe-area-inset-bottom, 0px));
+    position:absolute; left:8px; right:8px; bottom:6px;
     z-index:95; padding:0 6px; align-items:center;
     border-radius:12px;
     background:color-mix(in srgb, var(--tool) 42%, var(--ed-bg));
@@ -5133,16 +5133,22 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     if (v !== 'left' && v !== 'bottom') v = 'top';
     document.body.classList.toggle('vtabs', v === 'left');
     document.body.classList.toggle('btabs', v === 'bottom');
-    // 侧栏（fixed）的上下边界要跟纸面/工具栏对齐 —— 实测后写进 CSS 变量，避免写死值错位
-    syncVtabsBounds();
-    // 底部模式要把标签条挪进 .card 里：它默认是 body 的子元素、与 .card 是兄弟关系，
-    // 绝对定位找不到纸当容器（会跑到视口左下角）。这里真的移动 DOM，切模式时再挪回去。
+    // 侧栏（fixed）的上下边界要跟纸面/工具栏对齐 —— 实测后写进 CSS 变量，避免写死值错位。
+    // DOM 挪动会改变布局，所以挪完再量一次（rAF 后量，确保样式已生效）
+    try { syncVtabsBounds(); } catch (e) {}
+    // 底部模式要把标签条挪进**编辑区内部**。⚠️ 真正的纸是 .editor-wrap（有底色/描边/圆角），
+    // .card 只是透明容器 —— 挪进 .card 会落在纸外（用户反馈「这才是嵌入」）。
+    // .editor-wrap 本身 position:relative 且 overflow:hidden，正好当容器（自带圆角裁切）。
     const row = document.querySelector('.tabs-row');
+    const paper = document.querySelector('.editor-wrap');
     const card = document.querySelector('.card');
-    if (row && card) {
-      if (v === 'bottom') { if (row.parentElement !== card) card.appendChild(row); }
-      else if (row.parentElement !== document.body) { document.body.insertBefore(row, card); }
-    }
+    try {
+      if (row && paper && card) {
+        if (v === 'bottom') { if (row.parentElement !== paper) paper.appendChild(row); }
+        else if (row.parentElement !== document.body) { document.body.insertBefore(row, card); }
+      }
+    } catch (e) { /* DOM 结构异常时保持原状，不影响其它功能 */ }
+    requestAnimationFrame(function() { syncVtabsBounds(); });
   }
 
   // 拖拽落点方向：横向标签栏用 clientX 比，垂直标签栏改用 clientY 比

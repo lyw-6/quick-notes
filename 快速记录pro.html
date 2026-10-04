@@ -644,6 +644,14 @@ body.bg-custom header .meta {
 /* 管理器模板排序栏 */
 .tpl-sortbar { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; align-self:center; }
 .tpl-sortbar .sort-lbl { font-size:.78rem; color:var(--s); }
+.tpl-mgr-btn {
+  display:inline-flex; align-items:center; gap:5px; font:inherit; font-size:.8rem;
+  padding:5px 10px; border-radius:7px; cursor:pointer;
+  border:1.5px solid var(--border); background:var(--tool-h); color:var(--t);
+  transition:all .12s; -webkit-appearance:none; appearance:none;
+}
+.tpl-mgr-btn:hover { border-color:var(--p); color:var(--p); }
+.tpl-mgr-btn .ic { width:14px; height:14px; }
 /* 自定义排序下拉（替代原生 select） */
 .sort-dd { position:relative; display:inline-block; }
 .sort-dd-btn { display:inline-flex; align-items:center; gap:5px; font-size:.8rem; padding:5px 8px; border-radius:7px; border:1.5px solid var(--border); background:var(--tool-h); color:var(--t); cursor:pointer; transition:all .12s; max-width:160px; }
@@ -1682,16 +1690,6 @@ body.fullscreen .size-input-popup { z-index:190 !important; }
 .gw-switch .slider::before { content:""; position:absolute; height:18px; width:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
 .gw-switch input:checked + .slider { background:var(--p); }
 .gw-switch input:checked + .slider::before { transform:translateX(20px); }
-/* 设置区的原生下拉（标签栏位置）：跟随主题，箭头用背景图，别用浏览器默认样式 */
-.gw-select {
-  flex-shrink:0; font:inherit; font-size:13px; padding:5px 26px 5px 10px;
-  border-radius:9px; cursor:pointer; color:var(--t); background-color:var(--tool);
-  border:1px solid var(--border); outline:none;
-  -webkit-appearance:none; appearance:none;
-  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5l3.5 3.5 3.5-3.5' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat; background-position:right 8px center; background-size:12px 12px;
-}
-.gw-select:focus { border-color:var(--p); }
 .seg { display:inline-flex; border:1.5px solid var(--border); border-radius:8px; overflow:hidden; flex-shrink:0; }
 .seg button { border:none; background:var(--tool); color:var(--t); font-size:.76rem; padding:5px 14px; cursor:pointer; transition:all .15s; }
 .seg button + button { border-left:1.5px solid var(--border); }
@@ -3100,71 +3098,83 @@ body.notes-mode:not(.notes-list) .view-pill { padding:0 9px; }
    同理适用于选中态分组 chip（.nv-chip.on 的主色字）。 */
 .view-pill, .nv-chip.on { color:color-mix(in srgb, var(--p) 82%, #000); }
 body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
-/* ===================== 垂直标签栏 · Edge 风格（2026-10-04 重做）=====================
-   设置项「垂直标签栏（仅桌面）」→ body.vtabs + localStorage gw_vtags。
-   v1 只是把标签挪到左边（固定 206px 常驻 + body 改 grid），被反馈「不像 Edge、界面很怪、
-   底部工具栏割裂」。v2 按 Edge 真实形态重做：
-     ① 侧栏是一块**玻璃面板**（圆角 + 描边 + 投影），不再是浮在壁纸上的散落卡片；
-     ② **收起态 56px 只显示文档首字**（Edge 收起态只显示 favicon），鼠标悬停/聚焦展开到 224px，
-        展开时**浮在内容之上**（不推挤编辑区，这也是 Edge 的行为）；
-     ③ 编辑区与底部工具栏都只让出**收起宽度**（64px），工具栏不再横跨侧栏下方 —— 割裂感的来源。
-   ⚠️ 侧栏用 fixed 定位 + top/bottom 固定值（桌面 header≈64 / 工具栏≈88），不再动 body 的 grid。
-   仅 ≥768px：390px 放不下竖排侧栏，移动端保持横向。 */
-@media (min-width:768px) {
-  body.vtabs:not(.notes-mode) .tabs-row {
-    position:fixed; left:8px; top:64px; bottom:88px; width:56px;
-    display:flex; align-items:stretch; padding:0; margin:0;
-    z-index:60; overflow:hidden;
-    border-radius:14px;
-    background:color-mix(in srgb, var(--card) 92%, transparent);
-    border:1px solid var(--border);
-    box-shadow:0 8px 24px rgba(20,30,60,.10);
-    transition:width .18s ease, box-shadow .18s ease;
-  }
-  body.vtabs:not(.notes-mode) .tabs-row:hover,
-  body.vtabs:not(.notes-mode) .tabs-row:focus-within {
-    width:224px;
-    box-shadow:0 14px 36px rgba(20,30,60,.20);
-  }
-  body.vtabs:not(.notes-mode) .doc-tabs {
-    width:100%; height:100%; flex-direction:column; align-items:stretch;
-    overflow-x:hidden; overflow-y:auto; gap:4px; padding:8px 6px;
-  }
-  body.vtabs:not(.notes-mode) .doc-tab { width:100%; border-radius:10px; touch-action:pan-y; }
-  body.vtabs:not(.notes-mode) .doc-tab .tab-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  /* 收起态：只留「文档首字」这个身份标识，标题/图钉/关闭钮都收掉（Edge 收起态只有 favicon） */
-  body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab {
-    justify-content:center; padding:7px 0;
-  }
-  body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .tab-title,
-  body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .pin,
-  body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .x { display:none; }
-  body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab::before {
-    content:attr(data-idx); font-size:12px; font-weight:600; line-height:1; color:var(--s);
-  }
-  body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-new { align-self:center; }
-  /* 编辑区与工具栏只让出收起宽度（64px）—— 工具栏保持单行、末尾按钮仍在可视区 */
-  body.vtabs:not(.notes-mode) .card { margin-left:64px; }
-  body.vtabs:not(.notes-mode) #mainToolbar { left:calc(max(32px, 50% - 448px) + 64px); }
-  /* 落点指示器：竖排时改成上/下横条（横向是左/右竖条） */
-  body.vtabs:not(.notes-mode) .doc-tab.drop-before { box-shadow: inset 0 3px 0 0 var(--p); }
-  body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 var(--p); }
+/* ===================== 标签栏位置：顶部 / 底部 / 左侧（2026-10-04，10-05 放开移动端）=====================
+   设置 →「标签栏位置」三选，键 gw_tabpos（兼容旧 gw_vtabs=1 = 左侧）。
+   body.vtabs = 左侧（Edge 式可收放侧栏）；body.btabs = 底部（标签条浮在工具栏上方）。
+   两者都只挪 .tabs-row（同一套 DOM / 交互 / 拖拽），编辑区与工具栏相应让位。
+   —— 共性（玻璃面板、收起态只留序号、悬停展开）写在无媒体查询的规则里，只把尺寸分两档：
+      ≥768px：工具栏 bottom 24 / 高 56 → 标签条 bottom 86，侧栏收起 56 / 展开 224
+      ≤767px：工具栏 left-right 12 / bottom 20 / 高 54 → 标签条 bottom 80，侧栏收起 48 / 展开 200
+   ⚠️ 移动端原来被排除（怕竖排吃掉一半屏宽），实测 48px 只占 12% 可以接受；触屏没有 hover，
+      改用 :focus-within 展开（点一下标签即展开并切换，再点空白收起）。 */
+body.vtabs:not(.notes-mode) .tabs-row {
+  position:fixed; z-index:60; overflow:hidden; margin:0; padding:0;
+  display:flex; align-items:stretch;
+  border-radius:14px;
+  background:color-mix(in srgb, var(--card) 92%, transparent);
+  border:1px solid var(--border);
+  box-shadow:0 8px 24px rgba(20,30,60,.10);
+  transition:width .18s ease, box-shadow .18s ease;
+}
+body.vtabs:not(.notes-mode) .tabs-row:hover,
+body.vtabs:not(.notes-mode) .tabs-row:focus-within { box-shadow:0 14px 36px rgba(20,30,60,.20); }
+body.vtabs:not(.notes-mode) .doc-tabs {
+  width:100%; height:100%; flex-direction:column; align-items:stretch;
+  overflow-x:hidden; overflow-y:auto; gap:4px; padding:8px 6px;
+}
+body.vtabs:not(.notes-mode) .doc-tab { width:100%; border-radius:10px; touch-action:pan-y; }
+body.vtabs:not(.notes-mode) .doc-tab .tab-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* 收起态：只留「显示序号」这个身份标识（Edge 收起态只显示 favicon）。
+   ⚠️ 本来用标题首字，但文档多叫「文档1/2/3」→ 全是「文」没有区分度，改用顺序号。 */
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab { justify-content:center; padding:7px 0; }
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .tab-title,
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .pin,
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .x { display:none; }
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab::before {
+  content:attr(data-idx); font-size:12px; font-weight:600; line-height:1; color:var(--s);
+}
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-new { align-self:center; }
+/* 落点指示器：竖排时上/下横条 */
+body.vtabs:not(.notes-mode) .doc-tab.drop-before { box-shadow: inset 0 3px 0 0 var(--p); }
+body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 var(--p); }
 
-  /* ================= 标签栏置底（body.btabs，2026-10-04）=================
-     与顶部模式同一套 DOM/交互，只把 .tabs-row 浮到工具栏上方：
-       标签条 bottom:86px（工具栏占 24~80，留 6px 间隙），body padding-bottom 138px
-       → 编辑纸底边 = vh-138、标签条顶边 = vh-130，两者间距 8px，**与视口高度无关**。
-     工具栏保持最底，两条浮条叠着，不再出现「工具栏横跨侧栏下方」的割裂感。 */
+/* ---------- 左侧（垂直）尺寸档 ---------- */
+@media (min-width:768px) {
+  body.vtabs:not(.notes-mode) .tabs-row { left:8px; top:64px; bottom:88px; width:56px; }
+  body.vtabs:not(.notes-mode) .tabs-row:hover,
+  body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:224px; }
+  body.vtabs:not(.notes-mode) .card { margin-left:64px; }
+}
+@media (max-width:767px) {
+  body.vtabs:not(.notes-mode) .tabs-row {
+    left:4px; top:calc(56px + env(safe-area-inset-top, 0px));
+    bottom:calc(86px + env(safe-area-inset-bottom, 0px)); width:48px;
+  }
+  body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:200px; }
+  body.vtabs:not(.notes-mode) .card { margin-left:52px; }
+}
+
+/* ---------- 底部（标签条浮在工具栏上方，同宽同款胶囊底 = 底部双条） ---------- */
+@media (min-width:768px) {
   body.btabs:not(.notes-mode) { padding-bottom:138px; }
   body.btabs:not(.notes-mode) .tabs-row {
     position:fixed; left:max(32px, calc(50% - 448px)); right:max(32px, calc(50% - 448px));
     bottom:86px; z-index:95; padding:0 10px; align-items:center;
-    /* 与底部工具栏同款胶囊底：两条浮条叠着才协调（原来标签条透明、像浮在背景上） */
-    border-radius:24px; background:var(--ed-bg);
-    border:1px solid rgba(0,0,0,.03);
+    border-radius:24px; background:var(--ed-bg); border:1px solid rgba(0,0,0,.03);
     box-shadow:0 8px 28px rgba(0,0,0,.12);
   }
-  body.btabs:not(.notes-mode) .doc-tabs { padding:0 2px; flex-wrap:nowrap; }
+  body.btabs:not(.notes-mode) .doc-tabs { padding:0 2px; }
+}
+@media (max-width:767px) {
+  body.btabs:not(.notes-mode) { padding-bottom:calc(132px + env(safe-area-inset-bottom, 0px)); }
+  body.btabs:not(.notes-mode) .tabs-row {
+    position:fixed; left:12px; right:12px;
+    bottom:calc(80px + env(safe-area-inset-bottom, 0px));
+    z-index:95; padding:0 8px; align-items:center;
+    border-radius:20px; background:var(--ed-bg); border:1px solid rgba(0,0,0,.03);
+    box-shadow:0 8px 28px rgba(0,0,0,.12);
+  }
+  body.btabs:not(.notes-mode) .doc-tabs { padding:0 2px; }
 }
 </style>
 <script>
@@ -3518,9 +3528,6 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
     </div>
     <!-- 回收站：不要「其他」分类，直接压在抽屉最底部（margin-top:auto） -->
     <button class="nv-dr-row nv-dr-bin" id="nvDrBin" type="button"><svg class="ic"><use href="#i-trash"/></svg><span class="nm">回收站</span><span class="cnt" id="nvBinCnt">0</span></button>
-    <!-- 模板与历史：原来只有工具栏「更多 → 模板管理」一条路（要展开面板才看得到），
-         这里给一个模式级入口；弹窗本身是共用的（模板 / 历史 / 常用语 / 回收站 四个 tab） -->
-    <button class="nv-dr-row" id="nvDrTpl" type="button"><svg class="ic"><use href="#i-tpl-mgr"/></svg><span class="nm">模板与历史</span></button>
     <!-- 导出：标签模式专用（便签模式已经有 ⋯ 里的「导出全部为 MD」，不重复摆两个入口） -->
     <button class="nv-dr-row nv-dr-export" id="nvDrExport" type="button"><svg class="ic"><use href="#i-md"/></svg><span class="nm">导出全部为 MD</span></button>
   </aside>
@@ -3726,12 +3733,18 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
               <label class="gw-switch"><input type="checkbox" id="keepFormatToggle"><span class="slider"></span></label>
             </div>
             <div class="setting-row">
-              <span>标签栏位置（仅桌面）</span>
-              <select class="gw-select" id="tabPosSel" aria-label="标签栏位置">
-                <option value="top">顶部</option>
-                <option value="bottom">底部</option>
-                <option value="left">左侧（垂直）</option>
-              </select>
+              <span>标签栏位置</span>
+              <div class="sort-dd" id="tabPosDd">
+                <button type="button" class="sort-dd-btn" aria-haspopup="true">
+                  <span class="sort-dd-val">顶部</span>
+                  <svg class="sort-dd-caret" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5l3.5 3.5 3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="sort-dd-menu">
+                  <div class="sort-dd-opt" data-pos="top">顶部</div>
+                  <div class="sort-dd-opt" data-pos="bottom">底部（工具栏上方）</div>
+                  <div class="sort-dd-opt" data-pos="left">左侧（Edge 式侧栏）</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -3780,6 +3793,9 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
         <div class="tx-label">模板（预览 / 加载）</div>
         <div class="tpl-sortbar" id="tplSortBarQuick">
           <label class="sort-lbl">排序</label>
+          <!-- 模板管理入口：归在「模板」下（原来挂在抽屉里，语义不对）。
+               打开的是共用弹窗：模板 / 历史 / 常用语 / 回收站 四个 tab。 -->
+          <button id="tplMgrBtn" type="button" class="tpl-mgr-btn" title="模板管理：模板 / 历史 / 常用语 / 回收站"><svg class="ic"><use href="#i-tpl-mgr"/></svg><span>管理</span></button>
           <div class="sort-dd" id="tplSortSelQuick">
             <button type="button" class="sort-dd-btn" aria-haspopup="true">
               <span class="sort-dd-val">使用最多</span>
@@ -5038,6 +5054,19 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
     ov.classList.toggle('on', open);
     if (open) nvRenderDrawer();
   }
+  // 标签栏位置下拉的文字/选中态同步（模块级：init 回填与 change 都要用；
+  // ⚠️ 不能挂在 DOM 节点的 __sync 上 —— 回填发生在 bindEvents() 之前，那时 __sync 还没挂上）
+  const TABPOS_LABEL = { top: '顶部', bottom: '底部（工具栏上方）', left: '左侧（Edge 式侧栏）' };
+  function syncTabPosDd(v) {
+    const dd = document.getElementById('tabPosDd');
+    if (!dd) return;
+    const val = dd.querySelector('.sort-dd-val');
+    if (val) val.textContent = TABPOS_LABEL[v] || TABPOS_LABEL.top;
+    dd.querySelectorAll('.sort-dd-opt').forEach(function(o) {
+      o.classList.toggle('sel', o.getAttribute('data-pos') === v);
+    });
+  }
+
   // ---------- 标签栏位置（2026-10-04） ----------
   // top（默认，横向在编辑区上方）/ bottom（横向移到工具栏上方）/ left（Edge 式可收放侧栏）。
   // 键 gw_tabpos；仍兼容旧的 gw_vtabs=1（等价 left）。CSS 只在 ≥768px 生效。
@@ -5702,10 +5731,9 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
       nvDrawerToggle(false);
       nvExportAll();
     });
-    // 抽屉里的「模板与历史」：打开共用的模板管理弹窗（模板 / 历史 / 常用语 / 回收站）
-    const drTpl = $('nvDrTpl');
-    if (drTpl) drTpl.addEventListener('click', function() {
-      nvDrawerToggle(false);
+    // 模板面板里的「管理」：打开共用的模板管理弹窗（模板 / 历史 / 常用语 / 回收站）
+    const tplMgrBtn = $('tplMgrBtn');
+    if (tplMgrBtn) tplMgrBtn.addEventListener('click', function() {
       if (typeof openManager === 'function') openManager();
       else toast('模板管理暂不可用');
     });
@@ -11000,14 +11028,28 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
       toast(keepFormat ? '已开启：保留格式粘贴' : '已关闭：保留格式');
     });
 
-    // 标签栏位置：顶部 / 底部 / 左侧（仅桌面 ≥768px 生效）
-    const tabPosSel = $('tabPosSel');
-    if (tabPosSel) tabPosSel.addEventListener('change', function() {
-      const v = this.value === 'bottom' ? 'bottom' : (this.value === 'left' ? 'left' : 'top');
-      try { localStorage.setItem('gw_tabpos', v); localStorage.removeItem('gw_vtabs'); } catch (e) {}
-      applyTabPos();
-      toast(v === 'bottom' ? '标签栏已移到下方' : (v === 'left' ? '标签栏已移到左侧' : '标签栏回到顶部'));
-    });
+    // 标签栏位置：顶部 / 底部 / 左侧 —— 自定义下拉（不用原生 select，样式与项目其它下拉一致）
+    const tabPosDd = $('tabPosDd');
+    if (tabPosDd) {
+      const btn = tabPosDd.querySelector('.sort-dd-btn');
+      if (btn) btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        tabPosDd.classList.toggle('on');
+      });
+      tabPosDd.querySelectorAll('.sort-dd-opt').forEach(function(o) {
+        o.addEventListener('click', function() {
+          const v = o.getAttribute('data-pos') || 'top';
+          try { localStorage.setItem('gw_tabpos', v); localStorage.removeItem('gw_vtabs'); } catch (e) {}
+          applyTabPos();
+          syncTabPosDd(v);
+          tabPosDd.classList.remove('on');
+          toast(v === 'bottom' ? '标签栏已移到下方' : (v === 'left' ? '标签栏已移到左侧' : '标签栏回到顶部'));
+        });
+      });
+      document.addEventListener('click', function(e) {
+        if (!tabPosDd.contains(e.target)) tabPosDd.classList.remove('on');
+      });
+    }
 
     // 工具栏位置（顶部/底部）
     const seg = $('toolbarPosSeg');
@@ -12522,8 +12564,9 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
     const pdToggle = $('pasteDirectToggle'); if (pdToggle) pdToggle.checked = pasteDirect;
     const kfToggle = $('keepFormatToggle'); if (kfToggle) kfToggle.checked = keepFormat;
     // 标签栏位置：回填下拉 + 打 body.vtabs / body.btabs 标记（CSS 只在 ≥768px 生效）
-    const tabPosV = localStorage.getItem('gw_tabpos') || (localStorage.getItem('gw_vtabs') === '1' ? 'left' : 'top');
-    const tpSel = $('tabPosSel'); if (tpSel) tpSel.value = (tabPosV === 'bottom' || tabPosV === 'left') ? tabPosV : 'top';
+    const tabPosV0 = localStorage.getItem('gw_tabpos') || (localStorage.getItem('gw_vtabs') === '1' ? 'left' : 'top');
+    const tabPosV = (tabPosV0 === 'bottom' || tabPosV0 === 'left') ? tabPosV0 : 'top';
+    syncTabPosDd(tabPosV);
     applyTabPos();
 
     bindEvents();

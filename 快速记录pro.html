@@ -644,6 +644,9 @@ body.bg-custom header .meta {
 /* 管理器模板排序栏 */
 .tpl-sortbar { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; align-self:center; margin:0 0 12px; }
 .tpl-sortbar .sort-lbl { font-size:.78rem; color:var(--s); }
+/* 下拉菜单右对齐 + 按内容宽度：设置项控件在面板右侧，向右展开会被
+   #mainToolbar.expanded 的 overflow-x:hidden 裁掉（「底部（工具栏上方）」这类长文案尤其明显）。 */
+.dd-right .sort-dd-menu { left:auto; right:0; width:max-content; min-width:100%; }
 .tpl-mgr-btn {
   display:inline-flex; align-items:center; gap:5px; font:inherit; font-size:.8rem;
   padding:5px 10px; border-radius:7px; cursor:pointer;
@@ -3113,11 +3116,11 @@ body.vtabs:not(.notes-mode) .tabs-row {
   border-radius:14px;
   background:color-mix(in srgb, var(--card) 92%, transparent);
   border:1px solid var(--border);
-  box-shadow:0 8px 24px rgba(20,30,60,.10);
-  transition:width .18s ease, box-shadow .18s ease;
+  /* 侧栏不要投影（用户反馈）：左侧栏紧贴纸面，投影会在两者之间投出一道灰影，
+     看起来像「浮在纸旁边」而不是「和纸是一套」。层次只靠 1px 描边 + 半透底。 */
+  box-shadow:none;
+  transition:width .18s ease;
 }
-body.vtabs:not(.notes-mode) .tabs-row:hover,
-body.vtabs:not(.notes-mode) .tabs-row:focus-within { box-shadow:0 14px 36px rgba(20,30,60,.20); }
 body.vtabs:not(.notes-mode) .doc-tabs {
   width:100%; height:100%; flex-direction:column; align-items:stretch;
   overflow-x:hidden; overflow-y:auto; gap:4px; padding:8px 6px;
@@ -3131,9 +3134,20 @@ body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .t
 body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .pin,
 body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .x { display:none; }
 body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab::before {
-  content:attr(data-idx); font-size:12px; font-weight:600; line-height:1; color:var(--s);
+  content:attr(data-idx); font-size:12px; font-weight:700; line-height:1;
 }
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-new { align-self:center; }
+/* 只用数字 1/2/3… 太单调（用户反馈）→ 按序号循环 6 组色相：浅色底 + 同色数字。
+   颜色都取低饱和（15~16% 混色），不花，只为让每个标签一眼可区分。 */
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab:nth-child(6n+1) { background:color-mix(in srgb,#5b8def 16%,var(--card)); }
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab:nth-child(6n+2) { background:color-mix(in srgb,#22a06b 16%,var(--card)); }
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab:nth-child(6n+3) { background:color-mix(in srgb,#e0803c 16%,var(--card)); }
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab:nth-child(6n+4) { background:color-mix(in srgb,#c050c8 15%,var(--card)); }
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab:nth-child(6n+5) { background:color-mix(in srgb,#2fa8c4 16%,var(--card)); }
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab:nth-child(6n+6) { background:color-mix(in srgb,#d45b6a 15%,var(--card)); }
+body.vtabs:not(.notes-mode) .doc-new { align-self:center; }
+/* 展开态「+」跟着面板居中（原来只有收起态居中，展开后靠左、跟上方标签左缘对齐但显得歪） */
+body.vtabs:not(.notes-mode) .tabs-row:hover .doc-new,
+body.vtabs:not(.notes-mode) .tabs-row:focus-within .doc-new { margin:0 auto; }
 /* 落点指示器：竖排时上/下横条 */
 body.vtabs:not(.notes-mode) .doc-tab.drop-before { box-shadow: inset 0 3px 0 0 var(--p); }
 body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 var(--p); }
@@ -3147,56 +3161,60 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
        只多 8px 间隙。原来这里写 max(8px, …)，900px 视口下侧栏落在 16、工具栏在 32，
        侧栏反而探到工具栏左侧 → 看起来「左边多出一块」。 */
     left:calc(max(32px, 50% - 448px) + 8px);
-    top:64px; bottom:auto; width:56px;
-    max-height:calc(100dvh - 152px);   /* 64 顶 + 88 底 + 8 余量 */
+    /* 顶边对齐**纸面顶**（JS 实测写入 --vtabs-top，写死值会在移动端错位：header 高度随 safe-area 变）；
+       底边按内容收缩（bottom:auto），但用 max-height 兜住、不越过工具栏上沿。 */
+    top:var(--vtabs-top, 64px); bottom:auto; width:56px;
+    max-height:calc(100dvh - var(--vtabs-top, 64px) - var(--vtabs-bottom, 80px));
   }
   body.vtabs:not(.notes-mode) .tabs-row:hover,
   body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:224px; }
   body.vtabs:not(.notes-mode) .card { margin-left:64px; }
   /* 高度贴合内容：不再撑满一整列（原来 5 个标签下面挂着 500px 空白面板） */
-  body.vtabs:not(.notes-mode) .doc-tabs { height:auto; max-height:calc(100dvh - 168px); }
+  body.vtabs:not(.notes-mode) .doc-tabs { height:auto; max-height:100%; }
 }
 @media (max-width:767px) {
+  /* ⚠️ 移动端档也必须显式给 top：fixed 元素缺这项会停在原位（实测贴在 y=8） */
   body.vtabs:not(.notes-mode) .tabs-row {
-    left:12px; top:calc(56px + env(safe-area-inset-top, 0px));
-    bottom:auto; width:48px;
-    max-height:calc(100dvh - 150px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    left:12px; width:48px;
+    top:var(--vtabs-top, 50px); bottom:auto;
+    max-height:calc(100dvh - var(--vtabs-top, 50px) - var(--vtabs-bottom, 74px) - env(safe-area-inset-bottom, 0px));
   }
+  body.vtabs:not(.notes-mode) .card { margin-left:52px; }
   /* 触屏用 :focus-within（点一下展开），鼠标用 :hover —— 两者都要有。
      原来只写 focus-within，鼠标划过去会停在「半展开」中间态：面板还是 48px 但标题已恢复显示，
      结果标题被压成 0 宽（用户截图里那一列只剩图钉和 ×）。 */
   body.vtabs:not(.notes-mode) .tabs-row:hover,
   body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:200px; }
-  body.vtabs:not(.notes-mode) .card { margin-left:52px; }
 }
 
 /* ---------- 底部（标签条浮在工具栏上方，同宽同款胶囊底 = 底部双条） ---------- */
 @media (min-width:768px) {
-  /* 纸底 vh-142 / 标签条 vh-94..vh-134 / 工具栏 vh-80..vh-24
-     → 纸到标签 8px、标签到工具栏 14px（原来只有 6px，看着像撞在一起） */
-  body.btabs:not(.notes-mode) { padding-bottom:142px; }
+  /* 纸底 vh-86 / 工具栏 vh-80..vh-24 → 纸到工具栏 6px；标签条在**纸内**底部，不再浮在纸外。 */
+  body.btabs:not(.notes-mode) { padding-bottom:86px; }
+  body.btabs:not(.notes-mode) .card { position:relative; padding-bottom:52px; }
   body.btabs:not(.notes-mode) .tabs-row {
-    position:fixed; left:max(32px, calc(50% - 448px)); right:max(32px, calc(50% - 448px));
-    bottom:94px; z-index:95; padding:0 10px; align-items:center;
+    /* absolute 挂在 .card（纸）内 → 标签行成为编辑区的一部分，两侧跟着纸走圆角 */
+    position:absolute; left:10px; right:10px; bottom:8px; z-index:95; padding:0 8px; align-items:center;
     /* 标签栏要比工具栏「轻」一档：底更透、描边去掉、阴影减半 —— 否则底部两条一样重，抢焦点 */
-    /* 方标签不该装在圆胶囊里：圆角收到 12（与 .doc-tab 的 10 同一档），
-       底色只留一层极浅的墨色托盘、去掉描边与阴影 —— 底部只有工具栏一条「胶囊」，
-       标签行是「方」的语言，两层不再互相打架。 */
+    /* 底部模式这条标签栏已经**嵌在纸内**（DOM 移进 .card、absolute 贴纸底），
+       所以底色要贴近纸面才像「长在纸里」：用 ed-bg 混一点 tool，几乎与纸同色；
+       圆角 12（与 .doc-tab 同档），无描边无阴影。 */
     border-radius:12px;
-    background:color-mix(in srgb, var(--tool) 55%, transparent);
+    background:color-mix(in srgb, var(--tool) 42%, var(--ed-bg));
     border:1px solid transparent;
     box-shadow:none;
   }
   body.btabs:not(.notes-mode) .doc-tabs { padding:0 2px; }
 }
 @media (max-width:767px) {
-  body.btabs:not(.notes-mode) { padding-bottom:calc(134px + env(safe-area-inset-bottom, 0px)); }
+  body.btabs:not(.notes-mode) { padding-bottom:calc(80px + env(safe-area-inset-bottom, 0px)); }
+  body.btabs:not(.notes-mode) .card { position:relative; padding-bottom:50px; }
   body.btabs:not(.notes-mode) .tabs-row {
-    position:fixed; left:12px; right:12px;
-    bottom:calc(86px + env(safe-area-inset-bottom, 0px));
-    z-index:95; padding:0 8px; align-items:center;
+    position:absolute; left:8px; right:8px;
+    bottom:calc(6px + env(safe-area-inset-bottom, 0px));
+    z-index:95; padding:0 6px; align-items:center;
     border-radius:12px;
-    background:color-mix(in srgb, var(--tool) 55%, transparent);
+    background:color-mix(in srgb, var(--tool) 42%, var(--ed-bg));
     border:1px solid transparent;
     box-shadow:none;
   }
@@ -3760,7 +3778,7 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
             </div>
             <div class="setting-row">
               <span>标签栏位置</span>
-              <div class="sort-dd" id="tabPosDd">
+              <div class="sort-dd dd-right" id="tabPosDd">
                 <button type="button" class="sort-dd-btn" aria-haspopup="true">
                   <span class="sort-dd-val">顶部</span>
                   <svg class="sort-dd-caret" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5l3.5 3.5 3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -5096,12 +5114,35 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
   // ---------- 标签栏位置（2026-10-04） ----------
   // top（默认，横向在编辑区上方）/ bottom（横向移到工具栏上方）/ left（Edge 式可收放侧栏）。
   // 键 gw_tabpos；仍兼容旧的 gw_vtabs=1（等价 left）。CSS 只在 ≥768px 生效。
+  // 侧栏上下边界的实测对齐：top = 纸面顶，bottom = 工具栏上沿（视口 - 工具栏 top）
+  function syncVtabsBounds() {
+    if (!document.body.classList.contains('vtabs')) return;
+    const card = document.querySelector('.card');
+    const tb = document.querySelector('#mainToolbar');
+    const root = document.documentElement.style;
+    if (card) root.setProperty('--vtabs-top', Math.round(card.getBoundingClientRect().top) + 'px');
+    if (tb) {
+      const t = Math.round(tb.getBoundingClientRect().top);
+      root.setProperty('--vtabs-bottom', Math.max(8, Math.round(window.innerHeight - t)) + 'px');
+    }
+  }
+
   function applyTabPos() {
     let v = 'top';
     try { v = localStorage.getItem('gw_tabpos') || (localStorage.getItem('gw_vtabs') === '1' ? 'left' : 'top'); } catch (e) {}
     if (v !== 'left' && v !== 'bottom') v = 'top';
     document.body.classList.toggle('vtabs', v === 'left');
     document.body.classList.toggle('btabs', v === 'bottom');
+    // 侧栏（fixed）的上下边界要跟纸面/工具栏对齐 —— 实测后写进 CSS 变量，避免写死值错位
+    syncVtabsBounds();
+    // 底部模式要把标签条挪进 .card 里：它默认是 body 的子元素、与 .card 是兄弟关系，
+    // 绝对定位找不到纸当容器（会跑到视口左下角）。这里真的移动 DOM，切模式时再挪回去。
+    const row = document.querySelector('.tabs-row');
+    const card = document.querySelector('.card');
+    if (row && card) {
+      if (v === 'bottom') { if (row.parentElement !== card) card.appendChild(row); }
+      else if (row.parentElement !== document.body) { document.body.insertBefore(row, card); }
+    }
   }
 
   // 拖拽落点方向：横向标签栏用 clientX 比，垂直标签栏改用 clientY 比
@@ -12598,7 +12639,7 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     bindEvents();
 
     // 视口尺寸变化（桌面↔移动、旋转等）会改变 #ed padding，同步占位提示偏移
-    window.addEventListener('resize', updatePlaceholder);
+    window.addEventListener('resize', function() { updatePlaceholder(); syncVtabsBounds(); });
 
     if (isMobile) {
       const btn = $('mobileFormatBtn');

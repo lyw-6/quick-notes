@@ -1,0 +1,19 @@
+style(tabs): 修模板面板间距 + 标签栏美观三处
+
+1) 模板面板：排序行（「排序 | 管理 | 使用最多」）与第一张模板卡原来几乎贴在一起
+   -> .tpl-sortbar 加 margin-bottom:12px
+
+2) 左侧侧栏贴住编辑纸左缘
+   原来 left:8px 贴视口左边，而纸面居中在 x=192，中间空出 184px，两个东西不像一个系统。
+   改用与工具栏同一套限宽公式：left:calc(max(8px, 50% - 448px) + 8px)，
+   侧栏右缘正好抵住纸面左缘（实测间隙 3px）。
+
+3) 侧栏高度贴合内容
+   原来 top/bottom 双向定位 = 满高，5 个标签下面挂着 500px 空白面板。
+   改为 bottom:auto + max-height，.doc-tabs 改 height:auto。
+
+4) 底部标签条减一档权重
+   原来与工具栏同款（不透明白底 + 1px 描边 + 28px 阴影），底部两条一样重、抢焦点。
+   改为 color-mix(--ed-bg 72%) + 无描边 + 3px 12px 弱阴影，工具栏保持主、标签条从属。
+
+回归：八套全绿 + _verify_tabpos 31 + _verify_vt2 18 + _verify_dr 38

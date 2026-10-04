@@ -642,7 +642,7 @@ body.bg-custom header .meta {
 .dd-sb:hover { border-color:var(--p); color:var(--p); }
 .dd-sb.on { background:var(--p); color:#fff; border-color:var(--p); }
 /* 管理器模板排序栏 */
-.tpl-sortbar { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; align-self:center; }
+.tpl-sortbar { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; align-self:center; margin:0 0 12px; }
 .tpl-sortbar .sort-lbl { font-size:.78rem; color:var(--s); }
 .tpl-mgr-btn {
   display:inline-flex; align-items:center; gap:5px; font:inherit; font-size:.8rem;
@@ -3140,15 +3140,24 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
 
 /* ---------- 左侧（垂直）尺寸档 ---------- */
 @media (min-width:768px) {
-  body.vtabs:not(.notes-mode) .tabs-row { left:8px; top:64px; bottom:88px; width:56px; }
+  /* ⚠️ left 要跟着**纸面**走（body 居中，left 缘 = 50% - 448px，与工具栏同一公式），
+     不能贴视口左边 —— 那样侧栏与编辑纸之间会空出 180 多 px，看着不像一个系统。 */
+  body.vtabs:not(.notes-mode) .tabs-row {
+    left:calc(max(8px, 50% - 448px) + 8px);
+    top:64px; bottom:auto; width:56px;
+    max-height:calc(100dvh - 152px);   /* 64 顶 + 88 底 + 8 余量 */
+  }
   body.vtabs:not(.notes-mode) .tabs-row:hover,
   body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:224px; }
   body.vtabs:not(.notes-mode) .card { margin-left:64px; }
+  /* 高度贴合内容：不再撑满一整列（原来 5 个标签下面挂着 500px 空白面板） */
+  body.vtabs:not(.notes-mode) .doc-tabs { height:auto; max-height:calc(100dvh - 168px); }
 }
 @media (max-width:767px) {
   body.vtabs:not(.notes-mode) .tabs-row {
     left:4px; top:calc(56px + env(safe-area-inset-top, 0px));
-    bottom:calc(86px + env(safe-area-inset-bottom, 0px)); width:48px;
+    bottom:auto; width:48px;
+    max-height:calc(100dvh - 150px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   }
   body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:200px; }
   body.vtabs:not(.notes-mode) .card { margin-left:52px; }
@@ -3160,8 +3169,11 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
   body.btabs:not(.notes-mode) .tabs-row {
     position:fixed; left:max(32px, calc(50% - 448px)); right:max(32px, calc(50% - 448px));
     bottom:86px; z-index:95; padding:0 10px; align-items:center;
-    border-radius:24px; background:var(--ed-bg); border:1px solid rgba(0,0,0,.03);
-    box-shadow:0 8px 28px rgba(0,0,0,.12);
+    /* 标签栏要比工具栏「轻」一档：底更透、描边去掉、阴影减半 —— 否则底部两条一样重，抢焦点 */
+    border-radius:22px;
+    background:color-mix(in srgb, var(--ed-bg) 72%, transparent);
+    border:1px solid transparent;
+    box-shadow:0 3px 12px rgba(0,0,0,.07);
   }
   body.btabs:not(.notes-mode) .doc-tabs { padding:0 2px; }
 }
@@ -3171,8 +3183,10 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     position:fixed; left:12px; right:12px;
     bottom:calc(80px + env(safe-area-inset-bottom, 0px));
     z-index:95; padding:0 8px; align-items:center;
-    border-radius:20px; background:var(--ed-bg); border:1px solid rgba(0,0,0,.03);
-    box-shadow:0 8px 28px rgba(0,0,0,.12);
+    border-radius:20px;
+    background:color-mix(in srgb, var(--ed-bg) 72%, transparent);
+    border:1px solid transparent;
+    box-shadow:0 3px 12px rgba(0,0,0,.07);
   }
   body.btabs:not(.notes-mode) .doc-tabs { padding:0 2px; }
 }

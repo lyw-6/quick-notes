@@ -3037,6 +3037,21 @@ header .right { margin-left:auto; }
     inset 0 -1px 0 rgba(255,255,255,.40),
     0 3px 11px rgba(32,36,110,.15);
 }
+/* 便签列表页的纸面（#notesView）：与上面的编辑纸**同一套玻璃语言**。
+   ⚠️ 原来它直接 `background: var(--bg)`，而 frost 的 --bg 是一条**不透明渐变** →
+   ① 自定义壁纸被这块板完全遮住（只有纸面外一圈能看到）；
+   ② 纸面当然也没有 backdrop-filter —— frost 的毛玻璃在这一页整个断了（用户提问点）。
+   改成半透明白 + 真磨砂：壁纸/主题渐变从背后透进来并被模糊，玻璃语言与标签模式一致。
+   背后一定有东西可透：applyBackground() 把壁纸（gw_bg）或 frost 默认渐变写在 <html> 上。 */
+[data-theme="frost"] #notesView {
+  background: rgba(255,255,255, calc(var(--frost-alpha) * 0.84));
+  backdrop-filter: blur(calc(var(--frost-blur) * 0.7)) saturate(180%);
+  -webkit-backdrop-filter: blur(calc(var(--frost-blur) * 0.7)) saturate(180%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.46),
+    inset 0 1px 0 rgba(255,255,255,.72),
+    0 16px 40px rgba(28,32,100,.16);
+}
 /* 编辑纸：白度略降（0.50→0.46）让渐变透出来，配玻璃边与悬浮投影 */
 [data-theme="frost"] .editor-wrap {
   background: rgba(255,255,255,calc(var(--frost-alpha) * 0.84));
@@ -3045,13 +3060,32 @@ header .right { margin-left:auto; }
     inset 0 1px 0 rgba(255,255,255,.72),
     0 16px 40px rgba(28,32,100,.16);
 }
-/* 便签卡 / 分组 chip / 多选条 / 空态按钮：同款玻璃，比纸面略实一档 */
-[data-theme="frost"] .nv-item {
+/* frost 下列表 / 详情的差异化处理（2026-10-05，用户反馈「便签模式看起来很怪」）：
+   ① 列表态：行是透明底、靠 1px 分隔线分隔，而 frost 的 --border 是**纯白 55%** ——
+      浅紫渐变上等于一条条荧光亮线，把 12 行切得很碎（light 用的是灰线 #e2e8f0，安静得多）。
+      改用「文字色淡混」，与 light 的灰线同族，但能跟着背景变。
+   ② 详情态：卡片是 72% 白 + 白描边，**但没有 backdrop-filter** —— 有壁纸/渐变时它只是
+      「半透明白塑料片」，完全没有磨砂感；而同页的 chip 是 blur(7px) 真玻璃 → 材质不统一。
+      这里补上真磨砂，并把白度压低一档（0.72 → 0.62），让透色显出来（玻璃感来自"透 + 模糊"）。 */
+[data-theme="frost"] .nv-list.list .nv-item { border-bottom-color:color-mix(in srgb, var(--t) 10%, transparent); }
+[data-theme="frost"] .nv-list.list .nv-item:hover { background:color-mix(in srgb, var(--t) 5%, transparent); }
+[data-theme="frost"] .nv-list.detail .nv-item {
+  background:rgba(255,255,255,calc(var(--frost-alpha) * 1.12));
+  backdrop-filter:blur(12px) saturate(180%);
+  -webkit-backdrop-filter:blur(12px) saturate(180%);
+}
+/* 便签卡 / 分组 chip / 多选条 / 空态按钮：同款玻璃，比纸面略实一档
+   ⚠️ 这层玻璃投影**只给详情态的卡片**，不能套到列表行上（2026-10-05 修）：
+   列表态的行是「透明底 + 1px 分隔线」的连续列表，套上白色 inset 描边 + 顶部白亮线 + 投影后，
+   每一行都变成一个"白框凸起块"，12 行就是 12 个荧光框（像素实测：分隔线两侧有
+   (237,237,252)/(250,250,254) 的白晕，中间还夹一条暗线），观感很怪 —— 用户反馈「便签模式很怪」。 */
+[data-theme="frost"] .nv-list.detail .nv-item {
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,.50),
     inset 0 1px 0 rgba(255,255,255,.72),
     0 3px 10px rgba(32,36,110,.10);
 }
+[data-theme="frost"] .nv-list.list .nv-item { box-shadow:none; }
 [data-theme="frost"] .nv-chip,
 [data-theme="frost"] .nv-sb-txt,
 [data-theme="frost"] .nv-sb-x,
@@ -3267,7 +3301,8 @@ body.vtabs:not(.notes-mode) #newDocBtn .ic { width:16px; height:16px; flex:none;
    普通类选择器 31 压不过它 —— 背景/描边/阴影必须在这里盖掉。 */
 body.vtabs:not(.notes-mode) .tabs-row.expand #newDocBtn,
 body.vtabs:not(.notes-mode) .tabs-row:focus-within #newDocBtn {
-  justify-content:flex-start; gap:8px; padding-left:14px;
+  /* 16 = 收起态居中时图标的位置（48 宽居中 → x 16..32），两态零位移 */
+  justify-content:flex-start; gap:8px; padding-left:16px;
 }
 /* ⚠️ 文字用 max-width 过渡，**不要** width:0 → width:auto 突变：
    突变会让文字在面板宽度动画（.18s）走完前就满宽，被面板 overflow:hidden 从右侧切一刀，
@@ -3320,10 +3355,13 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     /* ⚠️ 基准必须与工具栏的限宽公式**完全一致**（max(32px, 50% - 448px)），
        只多 8px 间隙。原来这里写 max(8px, …)，900px 视口下侧栏落在 16、工具栏在 32，
        侧栏反而探到工具栏左侧 → 看起来「左边多出一块」。 */
-    left:calc(max(32px, 50% - 448px) + 8px);
+    /* ⚠️ 基准与顶栏 **☰ 按钮的左边缘**一致（header 内容左缘 + 2px 内边距）——
+       原来这里多加了 8px，侧栏左缘比正上方的菜单钮右移 6px（实测 menuToRail=6），
+       两条竖线对不齐（用户反馈）。侧栏宽度同时收窄 56 → 48。 */
+    left:calc(max(32px, 50% - 448px) + 2px);
     /* 顶边对齐**纸面顶**（JS 实测写入 --vtabs-top，写死值会在移动端错位：header 高度随 safe-area 变）；
        底边按内容收缩（bottom:auto），但用 max-height 兜住、不越过工具栏上沿。 */
-    top:var(--vtabs-top, 64px); bottom:auto; width:56px;
+    top:var(--vtabs-top, 64px); bottom:auto; width:48px;
   }
   /* ⚠️ 展开只由**标签列表区**触发（JS 给 .tabs-row 加 .expand），不包含底部「+」那一行：
      「+」是居中的，鼠标移到它上面时若面板也跟着展开，它会横移 ~80px，鼠标下的目标持续变化
@@ -3331,7 +3369,8 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
      .on 是旧选择器名，这里同时兼容 :focus-within（键盘 Tab 聚焦标签时也会展开）。 */
   body.vtabs:not(.notes-mode) .tabs-row.expand,
   body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:224px; }
-  body.vtabs:not(.notes-mode) .card { margin-left:64px; }
+  /* 2(与☰对齐的左缘) + 48(侧栏宽) = 50 → 纸面左缘仍贴住侧栏右缘（实测 railToPaper=0） */
+  body.vtabs:not(.notes-mode) .card { margin-left:50px; }
   /* 高度贴合内容：不再撑满一整列（原来 5 个标签下面挂着 500px 空白面板） */
   /* ⚠️ 必须 height:100%（不能用 auto + max-height:100%）：
      面板高度是 auto + max-height 决定的，百分比 max-height 在「父高不确定」时会解析成 none，
@@ -3343,10 +3382,11 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
 @media (max-width:767px) {
   /* ⚠️ 移动端档也必须显式给 top：fixed 元素缺这项会停在原位（实测贴在 y=8） */
   body.vtabs:not(.notes-mode) .tabs-row {
-    left:12px; width:48px;
+    /* left 与 ☰ 对齐（移动端 header 内容左缘 8 + 内边距 2 = 10；原来 12 → 偏 2px） */
+    left:10px; width:48px;
     top:var(--vtabs-top, 50px); bottom:auto;
   }
-  body.vtabs:not(.notes-mode) .card { margin-left:52px; }
+  body.vtabs:not(.notes-mode) .card { margin-left:50px; }   /* 10 + 48 - 8(body padding) = 50 */
   /* 触屏/键盘用 :focus-within，鼠标用 JS 的 .expand —— 两者都要有
      （原来只写 focus-within，鼠标划过去会停在「半展开」中间态）。
      ⚠️ 这里**不能**用 .tabs-row:hover：底部「+」也在面板内，鼠标落到「+」上会把面板撑开。
@@ -4782,7 +4822,21 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     if (!activeId || !docs[activeId]) return;
     const ed = $('ed');
     if (!ed) return;
+    // ① 先把编辑器内容同步进数据 —— 必须先同步再判空白：
+    //    刚输入的字只在编辑器 DOM 里，docs[].html 还是旧的空串，
+    //    顺序反了会把「已经写了内容」的新笔记误判成空白丢掉。
     docs[activeId].html = stripImgSrc(ed.innerHTML.replace(/\u200B/g, ''));
+    // ② 空的新建笔记：直接丢弃、不写盘（用户要求「没内容就不算新建」）。
+    //    丢完要把 activeId 让给还存在的某一条，否则编辑器停在一个已被删掉的 id 上。
+    if (nvPendingNew === activeId && nvDocIsBlank(docs[activeId])) {
+      nvDiscardPendingIfBlank();
+      const rest = Object.keys(docs);
+      activeId = rest.length ? rest[0] : '';
+      ed.innerHTML = activeId ? (docs[activeId].html || '<p><br></p>') : '<p><br></p>';
+      updatePlaceholder();
+      if (typeof renderTabs === 'function') renderTabs();
+      return;
+    }
     docs[activeId].ts = Date.now();
     saveDocs();
   }
@@ -4941,12 +4995,38 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     }, { title: '重置文档序号' });
   }
 
+  // ---------- 新建但没输入 → 不算新建（2026-10-05 用户反馈）----------
+  // 原来点「+」会立刻在列表里留下一条空便签（标题是自动生成的「文档N」），删不掉、越积越多。
+  // 现在把「刚由新建创建、还没写入任何内容」的那条记下来，离开它时若仍是空的就丢弃。
+  let nvPendingNew = '';    //  pending 笔记的 id
+  let nvPendingTitle = '';  //  它创建时的自动标题（用来判断用户有没有改名过）
+  // 空白判据：正文没有任何文字 **且** 标题仍是自动标题。
+  // 只写标题不算空白 —— 那是用户主动改的名（长按标题可重命名），删掉会丢他的东西。
+  function nvDocIsBlank(d) {
+    if (!d) return true;
+    const body = String(nvText(d.html || '')).replace(/[\s\u200B\u00a0]/g, '');
+    const title = String(d.title || '').trim();
+    return !body && (!title || title === nvPendingTitle);
+  }
+  function nvDiscardPendingIfBlank() {
+    const id = nvPendingNew;
+    nvPendingNew = '';
+    if (!id || !docs[id]) return false;
+    if (!nvDocIsBlank(docs[id])) return false;
+    delete docs[id];
+    try { delete undoStacks[id]; delete redoStacks[id]; } catch (e) {}
+    saveDocs();
+    return true;
+  }
+
   function newDoc() {
     saveCurrentDoc();
     const id = 'd' + docCounter++;
     docs[id] = { title: nextDocTitle(), html: '', ts: Date.now(), pinned: false };
     undoStacks[id] = [''];
     redoStacks[id] = [];
+    nvPendingNew = id;                 // 标记：这条是「刚新建、还没内容」
+    nvPendingTitle = docs[id].title;
     switchDoc(id);
   }
 
@@ -5056,8 +5136,13 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
   // 两种主模式并存：tabs（原标签模式）| notes（便签模式，先显示列表，点击条目进编辑器）
   // ============================================================
   let nvGroups = loadJSON('gw_groups', []);
-  let nvView = localStorage.getItem('gw_notes_view') || 'list';  // list | detail
-  let nvSort = localStorage.getItem('gw_notes_sort') || 'ts';     // ts（编辑时间）| title（文件名称）
+  /* ⚠️ 必须做**白名单校验**，不能 `|| 'list'`：localStorage 里一旦是脏值
+     （'undefined' / 'abc' / 旧版本遗留），`||` 会放过它 → className 变成 'nv-list undefined'，
+     既不命中列表态（透明底+分隔线）也不命中详情网格（多列），退化成「一列圆角白卡」——
+     两种视图规则都不生效，看起来像界面坏了。
+     同样的坑对 nvSort 也一并兜住。 */
+  let nvView = (function () { const v = localStorage.getItem('gw_notes_view'); return v === 'detail' ? 'detail' : 'list'; })();
+  let nvSort = (function () { const v = localStorage.getItem('gw_notes_sort'); return v === 'title' ? 'title' : 'ts'; })();  // ts（编辑时间）| title（文件名称）
   let nvGroup = localStorage.getItem('gw_notes_group') || '';    // '' = 全部
   let nvQuery = '';
   let nvMode = localStorage.getItem('gw_viewmode') || 'tabs';    // tabs | notes
@@ -5266,6 +5351,9 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     const open = force === undefined ? !dd.classList.contains('open') : !!force;
     dd.classList.toggle('open', open);
     if (!open) { dd.style.top = ''; dd.style.right = ''; return; }
+    // 顶栏两个下拉**互斥**（2026-10-05，用户反馈「为什么可以同时点击视图排序按钮和主题按钮」）：
+    // 两者都是 header 里的浮层，此前互不感知 → 点开一个再点另一个会**两层同时开着**、互相压着。
+    if (typeof closeThemeMenu === 'function') closeThemeMenu();
     nvSyncMoreDd();
     const r = btn.getBoundingClientRect();
     dd.style.top = (r.bottom + 6) + 'px';
@@ -10424,6 +10512,8 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     if (!dd) return;
     const open = dd.classList.toggle('open');
     if (open) {
+      // 同上：与「视图/排序」互斥，避免两个浮层同时开着
+      if (typeof nvMoreToggle === 'function') nvMoreToggle(false);
       updateThemeDdActive();
       if (btn) {
         const r = btn.getBoundingClientRect();

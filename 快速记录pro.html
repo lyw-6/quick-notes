@@ -2237,15 +2237,20 @@ body #mainToolbar.expanded .tool-group { border:none; border-radius:0; box-shado
 .gs-results { max-height:46vh; overflow:auto; display:flex; flex-direction:column; gap:6px; margin-top:2px; }
 
 .doc-tab .pin { display:inline-flex; align-items:center; justify-content:center; }
-.doc-tab .pin .ic { width:13px; height:13px; }
+/* 15px 而非 13px：新剪影是「头横档 + 三角针」两段式，13px 下横档只剩 2px 厚、
+   三角针断成两截（迭代台 lab_pin.cjs 实测）。15px 是它在描边/实心两种状态下都还读得出
+   「斜插的钉子」的下限；标签行高 32、pin 列 26px，15px 放得下。 */
+.doc-tab .pin .ic { width:15px; height:15px; }
 /* 关闭钮改用 i-close 描边图标（原先是不受控的字母 x，粗体环境下糊成黑块） */
 .doc-tab .x .ic { width:11px; height:11px; stroke-width:2.1; }
-/* ⚠️ 置顶图钉改用 i-pin-tab（圆头+钉身+底座三笔的描边型）后，绝不能再用 fill 实心表示「已置顶」——
-   钉身与底座是直线 path，填充后只剩一个圆点。置顶与否改由 opacity（.5 vs 1）+ 主色描边 + 略加粗表达 */
-.doc-tab .pin.on .ic { fill:none; stroke:var(--p); stroke-width:2.1; }
-.doc-tab .pin:not(.on) .ic { fill:none; stroke:var(--t); stroke-width:1.8; }
+/* ⚠️ 置顶图钉已换成「斜插经典款」（闭合轮廓，可 fill）—— 现在真正用上**实心**表达已置顶：
+   上一款是三根直线（圆头+钉身+底座），fill 后只剩一个圆点，置顶与否只能靠 opacity 区分，
+   状态一眼看不出。新款两条 path 都闭合，未置顶描边、已置顶 fill:currentColor + 同色细描边
+   （同色描边能把 13px 下的实心轮廓补厚一点，避免边缘发虚）。 */
+.doc-tab .pin.on .ic { fill:currentColor; stroke:currentColor; stroke-width:1.2; }
+.doc-tab .pin:not(.on) .ic { fill:none; stroke:var(--t); stroke-width:1.9; }
 .doc-tab.active .pin:not(.on) .ic { stroke:var(--p); }
-.doc-tab.active .pin.on .ic { fill:none; stroke:var(--p); stroke-width:2.1; }
+.doc-tab.active .pin.on .ic { fill:currentColor; stroke:currentColor; stroke-width:1.2; }
 .doc-tab .pin.on { color:var(--p); opacity:1; }
 .doc-tab.active .pin.on { color:var(--p); }
 .tab-rename { width:90px; max-width:100%; border:none; background:transparent; color:inherit; font:inherit; outline:none; padding:0; box-sizing:border-box; }
@@ -2704,7 +2709,7 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
    当文字超过行数上限被裁时，center 会把溢出「上下各切一半」——首行只露半截并与下一行叠住。
    flex-start 才是从底部干净裁掉；图钉用 margin-top 单独找回竖直居中（(1.3em-13px)/2 ≈ 3px）。 */
 .nv-title { font-size:15px; font-weight:600; color:var(--t); display:flex; align-items:flex-start; gap:5px; overflow-wrap:anywhere; }
-.nv-title .nv-pin { width:13px; height:13px; color:var(--p); flex:none; margin-top:3px; }
+.nv-title .nv-pin { width:15px; height:15px; color:var(--p); flex:none; margin-top:2px; }
 .nv-excerpt {
   font-size:13px; color:var(--s); margin-top:4px; line-height:1.5;
   overflow:hidden; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical;
@@ -3861,9 +3866,14 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     <symbol id="i-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
     <symbol id="i-slash" viewBox="0 0 24 24"><line x1="20" y1="4" x2="4" y2="20"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></symbol>
-    <!-- 标签栏置顶：圆头 + 钉身 + 底座三笔，比 i-pin 那套填充轮廓在 14px 下更干净
-         （.ic 是 stroke:currentColor;fill:none，填充式路径会被渲成密线空心框） -->
-    <symbol id="i-pin-tab" viewBox="0 0 24 24"><circle cx="12" cy="6" r="3.1"/><path d="M12 9.1v7.2"/><path d="M7.6 18.9h8.8"/></symbol>
+    <!-- 标签栏置顶：斜插经典图钉（2026-10-06 换款，用户从 6 个方案里选的 B）。
+         ⚠️ 这条路径是**直接按 45° 画的**（不是竖直图钉 rotate(45) 过来）——
+         试过"竖直两段式 + rotate(45)"，结果横档与三角错位，80px 下读起来像箭头/风筝；
+         而直接斜画时钉帽、钉身、针三者轴线一致，才是经典斜插图钉的样子。
+         两条 path 都闭合（钉身一体 + 锥形针），所以未置顶描边、已置顶 fill 实心都成立
+         （上一款「圆头+钉身+底座」是三根直线，fill 后只剩一个圆点，置顶与否只能靠 opacity 区分）。
+         锥形针而非一段直线：直针在实心填充时宽度只剩 1px，13px 下会断掉。 -->
+    <symbol id="i-pin-tab" viewBox="0 0 24 24"><path d="M15.5 3.5 20.5 8.5 18.6 10.4 17.4 9.2 12.4 14.2 12.4 16.6 11.6 17.4 6.6 12.4 7.4 11.6 9.8 11.6 14.8 6.6 13.6 5.4ZM10.9 13.2 5.6 20.1a.9.9 0 0 0 1.4 1.1l5.3-6.9z"/></symbol>
     <symbol id="i-tpl-mgr" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.4"/><path d="M12 3v3.2M12 17.8V21M3 12h3.2M17.8 12H21M5.2 5.2l2.3 2.3M16.5 16.5l2.3 2.3M18.8 5.2l-2.3 2.3M7.5 16.5l-2.3 2.3"/></symbol>
     <symbol id="i-edit" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M14.06 4.19l3.75 3.75 1.96-1.96a1.5 1.5 0 0 0 0-2.12l-1.83-1.83a1.5 1.5 0 0 0-2.12 0L14.06 4.19z"/></symbol>
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 4 21 9 16 9"/></symbol>

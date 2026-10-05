@@ -317,6 +317,19 @@ header .meta { font-size:.65rem; color:var(--s); display:flex; gap:4px; align-it
   transform:rotate(45deg);
 }
 @keyframes wcTipIn { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }
+/* 双击「步骤」徽标 → 气泡**常显**（.pin）：不再 3.4s 自动消失，且随输入实时刷新字数。
+   徽标同时进入 .pinned，方便一眼看出「现在是常显的」；再双击 / 点别处 / Esc 取消。 */
+.undo-stack-info.pinned {
+  color:color-mix(in srgb, var(--p) 82%, #000);
+  border-color:color-mix(in srgb, var(--p) 45%, transparent);
+  background:color-mix(in srgb, var(--p) 8%, var(--tool-h));
+}
+.wc-tip.pin { border-color:color-mix(in srgb, var(--p) 42%, var(--border)); }
+.wc-tip.pin::before { border-color:color-mix(in srgb, var(--p) 42%, var(--border)); }
+/* 徽标不可见的态，气泡必须一起隐藏（否则会孤零零挂在顶栏）：
+   便签列表态（顶栏右排整体隐藏）、窄屏（≤767px 徽标让位给标题/按钮）。 */
+body.notes-mode.notes-list .wc-tip { display:none !important; }
+@media (max-width:767px) { .wc-tip { display:none !important; } }
 /* 绿色护眼主题：--tool-h(#edf6f0) 与 --bg(#eef7f0) 几乎同色，徽标边界消失，
    且 --s 字色仅 3.38:1。单独加深字色/底色/描边，并保证徽标与页头可区分 */
 [data-theme="green"] .undo-stack-info {
@@ -3182,13 +3195,23 @@ body.vtabs:not(.notes-mode) .tabs-row { flex-direction:column; align-items:stret
 body.vtabs:not(.notes-mode) .doc-tabs { flex:1 1 auto; }
 /* 「+」= 一行「＋ 新建文档」。高度 32 与标签同档，上下间距也按标签的 gap（4px）走，
    不再用「分隔线 + 大间距」把它和列表切开（用户反馈：太远、现在有横线隔着了，按正常标签的距离就行）。 */
+/* ⚠️ 「新建文档」文案只属于**竖排侧栏**（那里是一整行、有 224px 宽）。
+   顶部/底部横排的「+」是 26px 圆形按钮，只显示图标 —— 用户要求「顶部和底部时不用显示文字」。
+   （.doc-new 的 DOM 统一成了「图标+文字」，所以必须按位置模式显式关掉：
+     实测不关的话图标被压成 6×22、还挤出一段 18px 的文字碎片。） */
+body:not(.vtabs):not(.notes-mode) #newDocBtn span { display:none; }
+/* 26px 的圆里塞 22px 图标太挤（全局 .ic 默认就是 22），收到 15px，与原先的「+」字号观感一致 */
+body:not(.vtabs):not(.notes-mode) #newDocBtn .ic { width:15px; height:15px; }
 body.vtabs:not(.notes-mode) #newDocBtn {
   align-self:stretch; width:auto;
-  height:32px; margin:4px 0 0; padding:0;
+  /* 间距 = 列表底部 4px（标签之间的 gap），「+」自身 margin-top 归零；
+     上方保留一条 1px 分隔线把「新建」与标签列表区分开（用户澄清：线要留，只是别隔太远）。 */
+  height:32px; margin:0; padding:0;
   /* 收起态：图标水平居中 → 与上方序号方块同一条中轴（宽屏下「+」才不会显得偏移）。
      展开态：靠左对齐（见下一条规则）。 */
   display:flex; align-items:center; justify-content:center; gap:0;
-  border:0; border-radius:0;
+  /* 分隔线用文字色淡混（不用 --border，那个在浅色/磨砂主题下几乎看不见一条线） */
+  border:0; border-top:1px solid color-mix(in srgb, var(--t) 14%, transparent); border-radius:0;
   background:transparent; box-shadow:none;
   color:var(--s); font-size:.82rem; font-weight:500;
   position:static; flex:none;
@@ -3217,7 +3240,9 @@ body.vtabs:not(.notes-mode) #newDocBtn:hover { color:var(--p); }
 /* 竖排列表底部不再留白：与「+」的间距统一由 margin-top:4px 决定（= 标签之间的 gap）。
    ⚠️ 但「可滚动」时仍要留 8px 给底部渐隐垫着，否则最后一个标签的下边框会被渐隐吃掉
    （用户反馈过「最底下标签边框不全」）；对应的「+」margin-top 用 -4px 抵消，保证间距恒为 4px。 */
-body.vtabs:not(.notes-mode) .doc-tabs { padding-bottom:0; }
+body.vtabs:not(.notes-mode) .doc-tabs { padding-bottom:4px; }
+/* 可滚动时留 8px：底部渐隐正好吃掉最后 8px，标签贴边的话它的下边框会被一起淡掉
+   （用户反馈「最后一个标签下边框看不清」）。对应「+」margin-top:-4px 抵消，间距恒为 4px。 */
 body.vtabs:not(.notes-mode) .tabs-row.can-scroll .doc-tabs { padding-bottom:8px; }
 body.vtabs:not(.notes-mode) .tabs-row.can-scroll #newDocBtn { margin-top:-4px; }
 /* ⚠️ 展开/收起**两种状态的标签必须同高**（32px）：
@@ -6107,31 +6132,60 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
   (function bindWcTip() {
     const badge = $('undoStackInfo'), tip = $('wcTip'), hd = document.querySelector('header');
     if (!badge || !tip || !hd) return;
-    let pressTimer = null, hideTimer = null, sx = 0, sy = 0;
-    function hide() { tip.classList.remove('open'); clearTimeout(hideTimer); hideTimer = null; }
-    function show() {
+    let pressTimer = null, hideTimer = null, sx = 0, sy = 0, pinned = false;
+    function tipText() {
       const wc = $('wordCount');
       const txt = wc && wc.textContent ? wc.textContent.trim() : '';
-      tip.textContent = txt || '0 字 · 0 段 · 0 行 · 1 分钟';
-      tip.classList.add('open');               // 先上屏再量宽度，才能贴住徽标右缘
+      return txt || '0 字 · 0 段 · 0 行 · 1 分钟';
+    }
+    function place() {
       const bb = badge.getBoundingClientRect(), hb = hd.getBoundingClientRect();
+      // 徽标被隐藏（便签列表态 / 窄屏让位）时气泡跟着关掉，别让它孤零零挂着
+      if (!bb.width || !bb.height) { hide(); return; }
       tip.style.right = Math.max(2, hb.right - bb.right + 4) + 'px';
       tip.style.top = (bb.bottom - hb.top + 7) + 'px';
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(hide, 3400);
+    }
+    function hide() {
+      tip.classList.remove('open', 'pin');
+      badge.classList.remove('pinned');
+      pinned = false;
+      clearTimeout(hideTimer); hideTimer = null;
+    }
+    // pin=false → 长按速览（3.4s 自动消失）；pin=true → 双击常显（不自动消失，随输入刷新）
+    function show(pin) {
+      tip.textContent = tipText();
+      tip.classList.add('open');               // 先上屏再量宽度，才能贴住徽标右缘
+      if (pin) { tip.classList.add('pin'); badge.classList.add('pinned'); pinned = true; }
+      place();
+      clearTimeout(hideTimer); hideTimer = null;
+      if (!pinned) hideTimer = setTimeout(hide, 3400);
     }
     function cancel() { clearTimeout(pressTimer); pressTimer = null; }
     badge.addEventListener('pointerdown', function(e) {
       sx = e.clientX; sy = e.clientY; cancel();
-      pressTimer = setTimeout(function() { pressTimer = null; show(); }, 420);
+      // 常显中不再响应长按：否则会重置 3.4s 计时，把「常显」打回速览
+      if (pinned) return;
+      pressTimer = setTimeout(function() { pressTimer = null; show(false); }, 420);
     });
     badge.addEventListener('pointermove', function(e) {
       if (pressTimer && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) cancel();
     });
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(t) { badge.addEventListener(t, cancel); });
     badge.addEventListener('contextmenu', function(e) { e.preventDefault(); });
-    document.addEventListener('pointerdown', function(e) { if (!badge.contains(e.target)) hide(); }, true);
-    window.addEventListener('resize', hide);
+    // 双击 = 常显 / 取消常显（长按仍是 3.4s 自动消失的速览，两个手势互不干扰）
+    badge.addEventListener('dblclick', function(e) {
+      e.preventDefault();
+      if (pinned) hide(); else { cancel(); show(true); }
+    });
+    // 速览态：点别处立刻收起。常显态：**任何点击都不关** ——
+    // 否则「点进编辑器继续写」这个最自然的动作会把气泡关掉，常显就失去意义了。
+    document.addEventListener('pointerdown', function(e) {
+      if (pinned) return;
+      if (!badge.contains(e.target)) hide();
+    }, true);
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && pinned) hide(); });
+    // 常显中只重新定位（软键盘弹出 / 旋转不该把它关掉），未常显才按原样隐藏
+    window.addEventListener('resize', function() { if (pinned) place(); else hide(); });
   })();
 
   // ============================================================
@@ -8222,6 +8276,9 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     const mins = Math.max(1, Math.ceil(words / 300));
     const wc = $('wordCount');
     if (wc) wc.textContent = words + ' 字 · ' + paras + ' 段 · ' + lines + ' 行 · ' + mins + ' 分钟';
+    // 气泡处于「常显」时（双击步骤徽标进入）随输入实时刷新字数 —— 否则常显只是一张静态快照
+    const tip = document.getElementById('wcTip');
+    if (tip && tip.classList.contains('pin')) tip.textContent = wc ? wc.textContent : '';
   }
 
   // 长文节流：统计合并到动画帧，避免输入时高频计算

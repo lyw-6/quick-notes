@@ -1,8 +1,22 @@
-fix(ui): 左侧标签栏改为与顶栏菜单中心对齐
+fix(ui): 工具栏滚动条自定义 + 便签 hover 补齐 + frost 下拉真磨砂
 
-侧栏宽 48px 而顶栏 ☰ 仅 34px（移动端 32px），原来对齐的是左缘，
-导致侧栏中心比菜单中心右偏 7~8px，看着没跟菜单对齐。
-现在改为中心对齐：left = 菜单左缘 - (侧栏宽-菜单宽)/2，
-.card 的 margin-left 同步减同一个量，纸面左缘仍贴住侧栏右缘。
+1. .tool-expand（工具栏「更多」展开面板，唯一滚动容器 sh637/ch480）漏写了
+   ::-webkit-scrollbar，走的是 Windows Chromium 默认 15px 带箭头原生滚动条，
+   与 .nv-list 的 8px 细圆角条完全是两副面孔。补齐同一套参数 + scrollbar-width。
+
+2. 便签列表行 hover 有两个独立缺陷：
+   a) hover 规则被关在 min-width:900px 里，884/390px 两档实测 hover 无底色无圆角；
+   b) frost 只有底色规则没圆角，且与 a) 错位 → hover 时变色但仍是直角。
+   统一提到基础档（不限宽度）。
+   ⚠️ 顺带修一个真 bug：.nv-list.list .nv-item{background:transparent} 是 (0,3,0)，
+   比 .nv-item.sel 的 (0,2,0) 特异性更高 → 列表视图多选底色被整条压掉，
+   选中行只剩圆角没有颜色。已在列表态同档重写。
+
+3. frost 下便签「视图/排序」下拉 .nv-more-dd 用了
+   color-mix(--card 96%, white)，白度不降反升且无 backdrop-filter，
+   背后列表原样透出（用户截图里能看见时间戳）。换成真玻璃 +
+   面板内按钮关掉 blur（透明底按钮叠加 backdrop-filter 会二次泛白）。
+
+新增套件 _verify_hover3.cjs（26 条）。16 套全绿。
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>

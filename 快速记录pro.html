@@ -3122,8 +3122,13 @@ body.vtabs:not(.notes-mode) .tabs-row {
   transition:width .18s ease;
 }
 body.vtabs:not(.notes-mode) .doc-tabs {
-  width:100%; height:100%; flex-direction:column; align-items:stretch;
+  width:100%; flex-direction:column; align-items:stretch;
   overflow-x:hidden; overflow-y:auto; gap:4px; padding:8px 6px;
+  /* ⚠️ 高度上限必须写在**滚动容器自己**身上（不能靠 height:100%）：
+     面板高度是 auto + max-height 决定的，父的 computed height 仍是 auto，
+     子元素的 height:100% 会被解析成 auto → 标签列撑到全高、被面板 overflow:hidden 裁掉、
+     滚不动（30 个标签实测卡住）。这里直接限制自身高度，内容少时自然贴合、内容多时滚动。 */
+  max-height:calc(100dvh - var(--vtabs-top, 64px) - var(--vtabs-bottom, 80px) - 16px);
 }
 body.vtabs:not(.notes-mode) .doc-tab { width:100%; border-radius:10px; touch-action:pan-y; }
 body.vtabs:not(.notes-mode) .doc-tab .tab-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -3148,7 +3153,22 @@ body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab::b
   content:attr(data-idx); font-size:13px; font-weight:700; line-height:1; color:var(--s);
 }
 body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab.active::before { color:#fff; }
-body.vtabs:not(.notes-mode) .doc-new { align-self:center; width:32px; height:32px; border-radius:9px; }
+/* 「+」吸附在侧栏底部：标签一多时不用先滚到底才能新建。
+   sticky 会浮在标签上方，所以要给它一块与面板同色的底（下面再留 padding 补足高度）。 */
+body.vtabs:not(.notes-mode) .doc-new {
+  align-self:center; width:32px; height:32px; border-radius:9px;
+  position:sticky; bottom:0; z-index:2; margin-top:4px;
+  background:color-mix(in srgb, var(--card) 96%, transparent);
+  box-shadow:0 -6px 10px -4px color-mix(in srgb, var(--card) 96%, transparent);
+}
+/* 竖排列表：行高收紧一点（一屏多放两三个），并在滚动区上下加渐隐，提示「还有内容」 */
+body.vtabs:not(.notes-mode) .doc-tabs { padding-bottom:2px; }
+body.vtabs:not(.notes-mode) .doc-tab { padding:3px 9px; }
+body.vtabs:not(.notes-mode) .tabs-row:hover .doc-tabs,
+body.vtabs:not(.notes-mode) .tabs-row:focus-within .doc-tabs {
+  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 12px), transparent 100%);
+  mask-image:linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 12px), transparent 100%);
+}
 /* 展开态「+」跟着面板居中（原来只有收起态居中，展开后靠左、跟上方标签左缘对齐但显得歪） */
 body.vtabs:not(.notes-mode) .tabs-row:hover .doc-new,
 body.vtabs:not(.notes-mode) .tabs-row:focus-within .doc-new { margin:0 auto; }
@@ -3168,20 +3188,23 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     /* 顶边对齐**纸面顶**（JS 实测写入 --vtabs-top，写死值会在移动端错位：header 高度随 safe-area 变）；
        底边按内容收缩（bottom:auto），但用 max-height 兜住、不越过工具栏上沿。 */
     top:var(--vtabs-top, 64px); bottom:auto; width:56px;
-    max-height:calc(100dvh - var(--vtabs-top, 64px) - var(--vtabs-bottom, 80px));
   }
   body.vtabs:not(.notes-mode) .tabs-row:hover,
   body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:224px; }
   body.vtabs:not(.notes-mode) .card { margin-left:64px; }
   /* 高度贴合内容：不再撑满一整列（原来 5 个标签下面挂着 500px 空白面板） */
-  body.vtabs:not(.notes-mode) .doc-tabs { height:auto; max-height:100%; }
+  /* ⚠️ 必须 height:100%（不能用 auto + max-height:100%）：
+     面板高度是 auto + max-height 决定的，百分比 max-height 在「父高不确定」时会解析成 none，
+     于是标签列撑到内容全高、被面板的 overflow:hidden 裁掉 —— 表现就是「30 个标签滚不动」。
+     height:100% 在 auto 高父级下退化为 auto（内容少时面板仍贴合内容），
+     在 max-height 生效时取父高（内容多时正常滚动）。 */
+  /* 高度上限已写在共性规则的 .doc-tabs 上（见上），这里不再重复 */
 }
 @media (max-width:767px) {
   /* ⚠️ 移动端档也必须显式给 top：fixed 元素缺这项会停在原位（实测贴在 y=8） */
   body.vtabs:not(.notes-mode) .tabs-row {
     left:12px; width:48px;
     top:var(--vtabs-top, 50px); bottom:auto;
-    max-height:calc(100dvh - var(--vtabs-top, 50px) - var(--vtabs-bottom, 74px) - env(safe-area-inset-bottom, 0px));
   }
   body.vtabs:not(.notes-mode) .card { margin-left:52px; }
   /* 触屏用 :focus-within（点一下展开），鼠标用 :hover —— 两者都要有。
@@ -4691,6 +4714,14 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     if (!bar || !el) return;
     const er = el.getBoundingClientRect();
     const br = bar.getBoundingClientRect();
+    // 竖排（左侧标签栏）：标签是上下排列的，必须滚 scrollTop —— 原来只处理 scrollLeft，
+    // 所以切到靠下的文档时列表纹丝不动，当前项留在视口外（用户截图里切到「文档16」却没滚过去）。
+    if (document.body.classList.contains('vtabs')) {
+      const padY = 8;
+      if (er.top < br.top + padY) bar.scrollTop -= (br.top + padY - er.top);
+      else if (er.bottom > br.bottom - padY) bar.scrollTop += (er.bottom - (br.bottom - padY));
+      return;
+    }
     const pad = 34; // 右侧「+」吸附占位，避免激活标签被它压住
     if (er.left < br.left + 2) bar.scrollLeft -= (br.left + 2 - er.left);
     else if (er.right > br.right - pad) bar.scrollLeft += (er.right - (br.right - pad));
@@ -5152,7 +5183,13 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
         else if (row.parentElement !== document.body) { document.body.insertBefore(row, card); }
       }
     } catch (e) { /* DOM 结构异常时保持原状，不影响其它功能 */ }
-    requestAnimationFrame(function() { syncVtabsBounds(); });
+    // 布局稳定后再量一次边界，并把当前标签滚进视野（首次加载时上面的 ensureTabVisible
+    // 跑在 body.vtabs 生效之前，竖排分支没走到 → 当前项留在视口外）
+    requestAnimationFrame(function() {
+      syncVtabsBounds();
+      const act = document.querySelector('.doc-tab.active');
+      if (act) ensureTabVisible(act);
+    });
   }
 
   // 拖拽落点方向：横向标签栏用 clientX 比，垂直标签栏改用 clientY 比

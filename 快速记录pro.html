@@ -3286,7 +3286,11 @@ body.vtabs:not(.notes-mode) .doc-tabs {
      侧栏下方留一条无主空白（用户「这么多标签怎么不到底部」）。
      改由 JS 实测写入 --vtabs-reserve：量 .doc-tabs 之外那部分真实占高
      （面板 top/bottom 边框 + 「+」行高度 − 抵消的 margin），跟样式改动自动同步。 */
-  max-height:calc(100dvh - var(--vtabs-top, 64px) - var(--vtabs-bottom, 80px) - var(--vtabs-reserve, 30px));
+  /* ⚠️⚠️ 下边界是**视口底**（--vtabs-bottom 恒为 0），不是工具栏上沿（2026-10-05 二次修正）。
+     上一版按「顶到工具栏上沿」收口，工具栏下方到屏幕底还空着 80px —— 用户「这还不是有空间吗」。
+     现在工具栏已收窄到与纸面同宽（left 与纸面左缘齐），**不再横跨侧栏那一列**（实测
+     侧栏右缘 == 工具栏左缘，overlapX=false），所以侧栏可以安全地一路撑到屏幕底。 */
+  max-height:calc(100dvh - var(--vtabs-top, 64px) - var(--vtabs-bottom, 0px) - var(--vtabs-reserve, 30px));
 }
 body.vtabs:not(.notes-mode) .doc-tab { width:100%; border-radius:10px; touch-action:pan-y; }
 body.vtabs:not(.notes-mode) .doc-tab .tab-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -5560,10 +5564,12 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
       const t = Math.round(card.getBoundingClientRect().top);
       if (t > 0) root.setProperty('--vtabs-top', t + 'px');
     }
-    if (tb) {
-      const t = Math.round(tb.getBoundingClientRect().top);
-      if (t > 0) root.setProperty('--vtabs-bottom', Math.max(8, Math.round(window.innerHeight - t)) + 'px');
-    }
+    // ⚠️ --vtabs-bottom 恒为 0：侧栏要一路撑到**视口底**，不是工具栏上沿。
+    //   原来写的是 `视口高 - 工具栏 top`（80px），侧栏就在工具栏上方收口，工具栏以下还空着
+    //   80px（用户「这还不是有空间吗」）。工具栏早已收窄到与纸面同宽（left 与纸面左缘齐），
+    //   不再横跨侧栏那一列（实测侧栏右缘 == 工具栏左缘），所以撑到屏幕底不会被它压住。
+    //   底部圆角直接贴视口底即可 —— body 本身有 safe-area 内边距，遮到的是 body 背景而非标签。
+    root.setProperty('--vtabs-bottom', '0px');
     // ⚠️ 侧栏「非列表部分」的实测占高（面板上下边框 + 「+」行 − 抵消的 margin）。
     //   写死 56px 时侧栏底恒定比工具栏上沿低 26px（标签多时列表够不到底，露出一条空白）。
     //   这里量 .tabs-row 的总高减去 .doc-tabs 的 max-height，就是列表能占的上限；

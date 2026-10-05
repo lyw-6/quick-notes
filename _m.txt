@@ -1,0 +1,23 @@
+fix(vtabs): 切换位置后侧栏不按内容收缩 / 「+」突兀 / 滑到底部抽搐
+
+用户三个反馈，对应三处：
+
+1) 从底部或顶部切到左侧后，列表没按内容收缩、要自己滑才能看全
+   根因：底部模式下 .doc-tabs 是横向滚动容器，切到竖排后**残留的 scrollTop** 把列表顶部
+   裁掉一截，看起来像没收紧。修：applyTabPos 的 rAF 里，切到 left 时把 docTabs 的
+   scrollTop / scrollLeft 归零，再 ensureTabVisible 当前项。
+   实测：底部→左侧、顶部→左侧，scrollTop 都是 0、面板高度贴合内容（268 = 内容 258 + 加号行）。
+
+2) 「+」突兀
+   根因：它是 .doc-tabs 的最后一个子元素 + position:sticky bottom，会浮在最后一行标签之上。
+   修：竖排时把「+」移出滚动区，作为侧栏底部**独立一行**（tabs-row 改 column 布局）。
+   新增 nvPlaceDocNew()：renderTabs 末尾与 applyTabPos 里都调用（切位置不会触发 renderTabs），
+   点击委托也补到 .tabs-row 上。
+
+3) 鼠标滑到底部时侧栏抽搐
+   根因：「+」原本 align-self:center —— 面板从 56px 展开到 224px 时它横向移动约 80px，
+   鼠标下的目标一直在动，宽度 transition 反复重算。
+   修：改为 align-self:flex-start + margin-left:6px（与标签左缘对齐），**两态都不移动**。
+   实测：收起 x=19 → 展开 x=19；点「+」新建正常（7 → 8 个标签）。
+
+回归：八套全绿 + _verify_new 30 + _verify_tabpos 31 + _verify_vt2 18 + _verify_dr 38

@@ -3171,13 +3171,18 @@ body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab::b
   content:attr(data-idx); font-size:13px; font-weight:700; line-height:1; color:var(--s);
 }
 body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab.active::before { color:#fff; }
-/* 「+」吸附在侧栏底部：标签一多时不用先滚到底才能新建。
-   sticky 会浮在标签上方，所以要给它一块与面板同色的底（下面再留 padding 补足高度）。 */
+/* 侧栏改成纵向布局：标签列表（滚动区）+ 底部固定一行的「+」。
+   「+」不再是列表里的 sticky 元素 —— sticky 会浮在最后一行标签上（突兀），
+   且鼠标滑到底部时 sticky 重排与面板宽度变化叠加会「抽搐」。 */
+body.vtabs:not(.notes-mode) .tabs-row { flex-direction:column; align-items:stretch; }
+body.vtabs:not(.notes-mode) .doc-tabs { flex:1 1 auto; }
+/* 「+」靠左对齐（与标签行左缘一致），**不要居中**：
+   居中时面板从 56px 展开到 224px，「+」会横向移动 ~80px，鼠标下的目标一直在动 →
+   面板宽度 transition 反复重算，表现为「鼠标滑到底部时侧栏抽搐」，点击也容易落空。 */
 body.vtabs:not(.notes-mode) .doc-new {
-  align-self:center; width:32px; height:32px; border-radius:9px;
-  position:sticky; bottom:0; z-index:2; margin-top:4px;
-  background:color-mix(in srgb, var(--card) 96%, transparent);
-  box-shadow:0 -6px 10px -4px color-mix(in srgb, var(--card) 96%, transparent);
+  align-self:flex-start; margin-left:6px;
+  width:32px; height:32px; border-radius:9px;
+  position:static; margin-top:6px; flex:none;
 }
 /* 竖排列表：行高收紧一点（一屏多放两三个），并在滚动区上下加渐隐，提示「还有内容」 */
 body.vtabs:not(.notes-mode) .doc-tabs { padding-bottom:2px; }
@@ -3187,9 +3192,7 @@ body.vtabs:not(.notes-mode) .tabs-row:focus-within .doc-tabs {
   -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 12px), transparent 100%);
   mask-image:linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 12px), transparent 100%);
 }
-/* 展开态「+」跟着面板居中（原来只有收起态居中，展开后靠左、跟上方标签左缘对齐但显得歪） */
-body.vtabs:not(.notes-mode) .tabs-row:hover .doc-new,
-body.vtabs:not(.notes-mode) .tabs-row:focus-within .doc-new { margin:0 auto; }
+
 /* 落点指示器：竖排时上/下横条 */
 body.vtabs:not(.notes-mode) .doc-tab.drop-before { box-shadow: inset 0 3px 0 0 var(--p); }
 body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 var(--p); }
@@ -4687,6 +4690,7 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     }
     if (qTab && !ids.length) html += '<span class="tab-none">无匹配标签</span>';
     html += '<button class="doc-new" id="newDocBtn" type="button" title="新建文档">+</button>';
+    nvPlaceDocNew();
     // 重渲染前记住滚动位置：原来每次都 scrollLeft=scrollWidth（强制跳到最右），
     // 标签一多就永远回不到前面的标签，且每次切文档都会把视口拽走。
     const keepScroll = bar.scrollLeft;
@@ -5167,6 +5171,18 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
   // ---------- 标签栏位置（2026-10-04） ----------
   // top（默认，横向在编辑区上方）/ bottom（横向移到工具栏上方）/ left（Edge 式可收放侧栏）。
   // 键 gw_tabpos；仍兼容旧的 gw_vtabs=1（等价 left）。CSS 只在 ≥768px 生效。
+  // 「+」的位置：竖排时移出滚动区、作为侧栏底部独立一行；其它位置放回标签列表末尾。
+  // 原来它是 .doc-tabs 的最后一个子元素 + position:sticky，会浮在最后一行标签上（突兀），
+  // 且鼠标滑到底部时 sticky 重排与面板宽度变化叠加会「抽搐」。
+  function nvPlaceDocNew() {
+    const nb = document.getElementById('newDocBtn');
+    const row = document.querySelector('.tabs-row');
+    const bar = document.getElementById('docTabs');
+    if (!nb || !row || !bar) return;
+    if (document.body.classList.contains('vtabs')) { if (nb.parentElement !== row) row.appendChild(nb); }
+    else if (nb.parentElement !== bar) bar.appendChild(nb);
+  }
+
   // 侧栏上下边界的实测对齐：top = 纸面顶，bottom = 工具栏上沿（视口 - 工具栏 top）
   function syncVtabsBounds() {
     if (!document.body.classList.contains('vtabs')) return;
@@ -5195,16 +5211,21 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     const row = document.querySelector('.tabs-row');
     const paper = document.querySelector('.editor-wrap');
     const card = document.querySelector('.card');
+    const bar0 = document.getElementById('docTabs');
     try {
       if (row && paper && card) {
         if (v === 'bottom') { if (row.parentElement !== paper) paper.appendChild(row); }
         else if (row.parentElement !== document.body) { document.body.insertBefore(row, card); }
       }
     } catch (e) { /* DOM 结构异常时保持原状，不影响其它功能 */ }
+    try { nvPlaceDocNew(); } catch (e) {}
     // 布局稳定后再量一次边界，并把当前标签滚进视野（首次加载时上面的 ensureTabVisible
     // 跑在 body.vtabs 生效之前，竖排分支没走到 → 当前项留在视口外）
     requestAnimationFrame(function() {
       syncVtabsBounds();
+      // 换位置后清掉上一个模式残留的滚动量：底部模式里 .doc-tabs 是横向滚动容器，
+      // 切到竖排后残留的 scrollTop 会把列表顶部裁掉一截，看着像「没按内容收缩，还要自己滑」。
+      if (v === 'left') { try { bar0.scrollTop = 0; bar0.scrollLeft = 0; } catch (e) {} }
       const act = document.querySelector('.doc-tab.active');
       if (act) ensureTabVisible(act);
     });
@@ -10839,6 +10860,15 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     // 文档标签页
     const docTabs = $('docTabs');
     if (docTabs) {
+      // 「+」在竖排时被移出 .doc-tabs（放侧栏底部），所以在 .tabs-row 上补一层委托
+      const tabsRowEl = document.querySelector('.tabs-row');
+      if (tabsRowEl && !tabsRowEl.__newBound) {
+        tabsRowEl.__newBound = 1;
+        tabsRowEl.addEventListener('click', function(e) {
+          if (e.target.closest('.doc-new')) { e.stopPropagation(); newDoc(); }
+        });
+      }
+
       docTabs.addEventListener('click', function(e) {
         const tab = e.target.closest('.doc-tab');
         const closeBtn = e.target.closest('.x');

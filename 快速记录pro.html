@@ -2677,7 +2677,10 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
   border-radius:4px; border:2px solid transparent; background-clip:content-box;
 }
 .nv-list::-webkit-scrollbar-thumb:hover { background:color-mix(in srgb, var(--s) 45%, transparent); background-clip:content-box; }
-.nv-list.detail { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:10px; align-content:start; }
+.nv-list.detail { display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px; align-content:start; }
+/*   ↑ 基础档（769~899px 走这条，用户 884px 的窗口就是它）也一起收：原来 240 → 3 列。
+     190 的算式：列数 = floor((容器宽 + gap) / (min + gap))；容器 820、gap 10
+     → floor(830/200) = 4 ✓。≥900px 那档见下面（gap 14、同样 190）。 */
 .nv-item {
   display:flex; align-items:flex-start; gap:8px; padding:11px 12px; margin-bottom:8px;
   border-radius:12px; background:var(--card); border:1px solid var(--border); cursor:pointer;
@@ -2855,7 +2858,10 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
     padding-right:max(24px, calc((100% - 880px) / 2 + 24px));
   }
   .nv-list { padding-left:24px; padding-right:24px; }
-  .nv-list.detail { grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:14px; padding-top:16px; }
+  /* 列宽 260 → 190：要在一屏多放一张卡，得让 auto-fill 算出的列数从 3 变 4。
+     算式：列数 = floor((容器宽 + gap) / (min + gap))；容器 856（880 - 24 内边距）、gap 14，
+     min=260 → floor(870/274)=3；min=190 → floor(870/204)=4 ✓（实测 4 列、每张 203px）。 */
+  .nv-list.detail { grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:14px; padding-top:16px; }
   .nv-list.list .nv-item { padding:14px 12px; }
   .nv-selbar { padding-left:max(14px, calc((100% - 880px) / 2 + 24px)); padding-right:max(14px, calc((100% - 880px) / 2 + 24px)); }
   .nv-item:hover { background:var(--tool-h); }
@@ -2978,15 +2984,34 @@ header .right { margin-left:auto; }
 /* 列表态：标题与摘要各锁一行 → 行高一致。
    标题改 block 才吃得到 text-overflow（flex 容器对文字不出省略号，只会硬裁）；
    图钉随之改成行内块并压低 2px 对齐文字基线（.ic 默认 display:block，不改会独占一行）。 */
-.nv-list.list .nv-item { height:90px; }
+/* 2026-10-05 改版（用户反馈「行高偏松、右侧空着 500px」）：
+   原来锁 `height:90px` 换行高一致，一屏只放 11 条，右侧还空着一大片。现在：
+     ① **高度自适应**：min-height 56，只有标题的行紧凑，有摘要的行自然多一行；
+     ② **时间戳推到行右侧**（order 2 + margin-left），左右两端都有内容；
+     ③ `.nv-main` 用 `display:contents` 参与 flex —— 它只是包装层，不该影响排版。
+   用 flex+order 而不是 grid：多选圈不在 DOM 里时，grid 的 auto 空列会留下 10px 空隙
+   （`:has()` 旧 WebView 不支持，没法条件消除该列）；flex+order 没这个问题。 */
+.nv-list.list .nv-item {
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:0;
+  height:auto; min-height:56px;
+}
+.nv-list.list .nv-item > .nv-main { display:contents; }
+.nv-list.list .nv-chk { order:0; flex:none; margin:0 8px 0 0; align-self:center; }
+/* ⚠️ flex 基准必须是 **0**（不是 auto）：flex 换行是按「基准尺寸」判定的，
+   标题用 auto 时长标题的基准 = 全文宽度，勾选圈 + 标题 + 时间戳加起来超宽 →
+   时间戳被挤到第二行，整行凭空多出 20px（多选态实测第一行 82 → 102）。
+   basis:0 让标题从 0 起长，剩余空间全给它（配 min-width:0 出省略号），时间戳永不换行。 */
+.nv-list.list .nv-title { order:1; flex:1 1 0; min-width:0; }
+.nv-list.list .nv-meta { order:2; flex:none; margin:0 0 0 14px; }
+.nv-list.list .nv-excerpt { order:3; flex:1 1 100%; min-width:0; margin-top:2px; }
 .nv-list.list .nv-title {
   display:block; line-height:1.3;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .nv-list.list .nv-title .nv-pin { display:inline-block; vertical-align:-2px; margin:0 4px 0 0; }
 @media (min-width:900px) {
-  /* 桌面行内边距更大（上下 14px），行高同步 +4 */
-  .nv-list.list .nv-item { height:94px; }
+  /* 桌面行内边距更大（上下 14px），最小行高同步 +6 */
+  .nv-list.list .nv-item { min-height:62px; }
 }
 /* ===================== frost 液态玻璃 v2（2026-10-03）=====================
    背景：只换底色不够——原来所有面都是「白 + blur」，背后只有一张静态渐变，

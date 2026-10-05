@@ -5323,10 +5323,18 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     const card = document.querySelector('.card');
     const tb = document.querySelector('#mainToolbar');
     const root = document.documentElement.style;
-    if (card) root.setProperty('--vtabs-top', Math.round(card.getBoundingClientRect().top) + 'px');
+    // ⚠️ **只在真的量到值时才写**。便签列表态下 .card 是 display:none、#mainToolbar 也隐藏，
+    //   getBoundingClientRect() 全返回 0 —— 原来照写不误，于是留下
+    //   `--vtabs-top:0px / --vtabs-bottom:1000px`（1000 = 视口高 - 工具栏 top=0）。
+    //   一旦从便签列表态切到标签模式，侧栏就按这组过期值定位：顶到 y=0、压在 header 上，
+    //   把左上角的 ☰ 挤成一坨（用户截图）。量不到就保留上一次的有效值，让 CSS 兜底值生效。
+    if (card) {
+      const t = Math.round(card.getBoundingClientRect().top);
+      if (t > 0) root.setProperty('--vtabs-top', t + 'px');
+    }
     if (tb) {
       const t = Math.round(tb.getBoundingClientRect().top);
-      root.setProperty('--vtabs-bottom', Math.max(8, Math.round(window.innerHeight - t)) + 'px');
+      if (t > 0) root.setProperty('--vtabs-bottom', Math.max(8, Math.round(window.innerHeight - t)) + 'px');
     }
   }
 
@@ -5557,6 +5565,10 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     else document.body.classList.remove('notes-list');
     nvSyncModeBtn();
     if (nvIsNotes()) { nvRenderAll(); nvSyncEdTitle(); } else renderTabs();
+    // 模式切换会改变 .card / #mainToolbar 是否可见 → 左侧栏的边界变量必须重量。
+    // 原来只在 init 与「标签栏位置」下拉变化时量，便签列表态切到标签模式就沿用那组过期值（见 syncVtabsBounds 注释）。
+    // applyTabPos() 幂等：重打 body.vtabs/btabs + 重测边界 + 归零滚动 + 重新定位「+」。
+    try { applyTabPos(); } catch (e) {}
   }
 
   function setViewMode(m) {

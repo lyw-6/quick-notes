@@ -3176,22 +3176,53 @@ body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab.ac
    且鼠标滑到底部时 sticky 重排与面板宽度变化叠加会「抽搐」。 */
 body.vtabs:not(.notes-mode) .tabs-row { flex-direction:column; align-items:stretch; }
 body.vtabs:not(.notes-mode) .doc-tabs { flex:1 1 auto; }
-/* 「+」靠左对齐（与标签行左缘一致），**不要居中**：
-   居中时面板从 56px 展开到 224px，「+」会横向移动 ~80px，鼠标下的目标一直在动 →
-   面板宽度 transition 反复重算，表现为「鼠标滑到底部时侧栏抽搐」，点击也容易落空。 */
-body.vtabs:not(.notes-mode) .doc-new {
-  /* 侧栏底部独立一行、水平居中。之前的抽搐来自 sticky 元素与面板宽度 transition 叠加，
-     sticky 去掉后实测 hover 展开不再抖，这里可以安心居中。 */
-  align-self:center; width:32px; height:32px; border-radius:9px;
-  position:static; margin-top:6px; flex:none;
+/* 「+」按 Edge 的写法：**上方一条分隔线 + 「＋ 新建文档」一行**。
+   位置固定靠左、图标 x 两态一致（面板展开时只有右侧文字淡入，图标不动，因此不会抽搐）。
+   ⚠️ 用 ID 选择器：frost 有 `[data-theme="frost"] #newDocBtn`（属性+ID = 110），
+   普通类选择器 31 压不过它 —— 背景/描边/阴影必须在这里盖掉。 */
+body.vtabs:not(.notes-mode) #newDocBtn {
+  align-self:stretch; width:auto;
+  height:34px; margin:6px 0 0; padding:0 0 0 14px;
+  /* ⚠️ 基础 .doc-new 是圆形按钮（justify-content:center），必须显式改回 flex-start，
+     否则面板展开变宽时图标会被推到中间（实测 x 从 31 → 107）。 */
+  display:flex; align-items:center; justify-content:flex-start; gap:8px;
+  border:0; border-top:1px solid var(--border); border-radius:0;
+  background:transparent; box-shadow:none;
+  color:var(--s); font-size:.82rem; font-weight:500;
+  position:static; flex:none;
 }
-/* 竖排列表：行高收紧一点（一屏多放两三个），并在滚动区上下加渐隐，提示「还有内容」 */
-body.vtabs:not(.notes-mode) .doc-tabs { padding-bottom:2px; }
-body.vtabs:not(.notes-mode) .doc-tab { padding:3px 9px; }
-body.vtabs:not(.notes-mode) .tabs-row:hover .doc-tabs,
-body.vtabs:not(.notes-mode) .tabs-row:focus-within .doc-tabs {
-  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 12px), transparent 100%);
-  mask-image:linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 12px), transparent 100%);
+body.vtabs:not(.notes-mode) #newDocBtn .ic { width:16px; height:16px; flex:none; }
+/* 文字只在展开态淡入：图标位置不动 → 无抽搐（收起态 48px 也放不下文字） */
+body.vtabs:not(.notes-mode) #newDocBtn span {
+  opacity:0; width:0; overflow:hidden; white-space:nowrap;
+  transition:opacity .14s ease;
+}
+/* 面板悬停（或 .expand 类、键盘聚焦）时文字淡入；图标位置不变 → 不抽搐。
+   展开条件与上面宽度规则保持一致（:hover + .expand + :focus-within 三种都支持）。 */
+body.vtabs:not(.notes-mode) .tabs-row:hover #newDocBtn span,
+body.vtabs:not(.notes-mode) .tabs-row.expand #newDocBtn span,
+body.vtabs:not(.notes-mode) .tabs-row:focus-within #newDocBtn span { opacity:1; width:auto; }
+body.vtabs:not(.notes-mode) #newDocBtn:hover { color:var(--p); }
+/* 竖排列表：底部留 10px —— 原来只留 2px，最后一个标签的下边框几乎贴着滚动区边缘，
+   一旦渐隐生效就被一起淡掉（用户反馈「最底下那个标签边框显示不全」）。 */
+body.vtabs:not(.notes-mode) .doc-tabs { padding-bottom:10px; }
+/* ⚠️ 展开/收起**两种状态的标签必须同高**（32px）：
+   原来只有收起态写了 height:32，展开态靠 padding 3px 撑出 26px →
+   8 个标签就差 48px，面板高度随之变化 → 鼠标（停在原位置）掉出面板 → mouseleave 收起 →
+   行高回 32 → 面板长回来 → 鼠标又进入 …… 无限循环 = 「抽搐」。
+   同时也正是「展开前后标签高度不一致」的根因。 */
+body.vtabs:not(.notes-mode) .doc-tab {
+  height:32px; padding:0 9px; min-height:32px;
+  display:flex; align-items:center;
+}
+/* ⚠️ 渐隐只在**真的能滚动**时启用（JS 打 .can-scroll）：
+   否则内容本来就装得下，底部渐隐会把最后一个标签的下边框和面板圆角一起淡掉
+   （用户反馈「底部没圆角」「最底下标签边框不全」）。渐隐范围也收到 8px/10px。 */
+body.vtabs:not(.notes-mode) .tabs-row.can-scroll:hover .doc-tabs,
+body.vtabs:not(.notes-mode) .tabs-row.can-scroll.expand .doc-tabs,
+body.vtabs:not(.notes-mode) .tabs-row.can-scroll:focus-within .doc-tabs {
+  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 10px), transparent 100%);
+  mask-image:linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 10px), transparent 100%);
 }
 
 /* 落点指示器：竖排时上/下横条 */
@@ -3661,7 +3692,7 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
 <!-- 标签栏：视图开关已移到顶栏，这里只放标签本身 -->
 <div class="tabs-row">
   <div class="doc-tabs" id="docTabs"></div>
-  <button class="doc-new" id="newDocBtn" type="button" title="新建文档">+</button>
+  <button class="doc-new" id="newDocBtn" type="button" title="新建文档"><svg class="ic"><use href="#i-plus"/></svg><span>新建文档</span></button>
 </div>
 <div class="card">
   <!-- 原模板行已移除：模板/阅读等入口移入底部「更多」面板 -->
@@ -4706,6 +4737,7 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     const actTab = bar.querySelector('.doc-tab.active');
     if (actTab) ensureTabVisible(actTab);
     else bar.scrollLeft = keepScroll;
+    nvMarkScrollable();
     if (editingTabId) {
       const inp = bar.querySelector('.tab-rename[data-rename="' + editingTabId + '"]');
       if (inp) { inp.focus(); inp.select(); }
@@ -5182,6 +5214,14 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
   // 「+」的位置：竖排时移出滚动区、作为侧栏底部独立一行；其它位置放回标签列表末尾。
   // 原来它是 .doc-tabs 的最后一个子元素 + position:sticky，会浮在最后一行标签上（突兀），
   // 且鼠标滑到底部时 sticky 重排与面板宽度变化叠加会「抽搐」。
+  // 竖排列表「能否滚动」→ 打 .can-scroll（渐隐提示只在这种情况下启用）
+  function nvMarkScrollable() {
+    const bar = document.getElementById('docTabs');
+    const row = document.querySelector('.tabs-row');
+    if (!bar || !row) return;
+    row.classList.toggle('can-scroll', bar.scrollHeight > bar.clientHeight + 4);
+  }
+
   function nvPlaceDocNew() {
     // 「+」是 .tabs-row 里的常驻节点（不在 .doc-tabs 内），三种位置都无需搬动：
     //   顶部/底部 → .tabs-row 横向 flex，它跟在标签列表右侧（与原行为一致）
@@ -5232,6 +5272,7 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     // 跑在 body.vtabs 生效之前，竖排分支没走到 → 当前项留在视口外）
     requestAnimationFrame(function() {
       syncVtabsBounds();
+      nvMarkScrollable();
       // 换位置后清掉上一个模式残留的滚动量：底部模式里 .doc-tabs 是横向滚动容器，
       // 切到竖排后残留的 scrollTop 会把列表顶部裁掉一截，看着像「没按内容收缩，还要自己滑」。
       if (v === 'left') { try { bar0.scrollTop = 0; bar0.scrollLeft = 0; } catch (e) {} }
@@ -12763,7 +12804,7 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     bindEvents();
 
     // 视口尺寸变化（桌面↔移动、旋转等）会改变 #ed padding，同步占位提示偏移
-    window.addEventListener('resize', function() { updatePlaceholder(); syncVtabsBounds(); });
+    window.addEventListener('resize', function() { updatePlaceholder(); syncVtabsBounds(); nvMarkScrollable(); });
 
     if (isMobile) {
       const btn = $('mobileFormatBtn');

@@ -3180,8 +3180,9 @@ body.vtabs:not(.notes-mode) .doc-tabs { flex:1 1 auto; }
    居中时面板从 56px 展开到 224px，「+」会横向移动 ~80px，鼠标下的目标一直在动 →
    面板宽度 transition 反复重算，表现为「鼠标滑到底部时侧栏抽搐」，点击也容易落空。 */
 body.vtabs:not(.notes-mode) .doc-new {
-  align-self:flex-start; margin-left:6px;
-  width:32px; height:32px; border-radius:9px;
+  /* 侧栏底部独立一行、水平居中。之前的抽搐来自 sticky 元素与面板宽度 transition 叠加，
+     sticky 去掉后实测 hover 展开不再抖，这里可以安心居中。 */
+  align-self:center; width:32px; height:32px; border-radius:9px;
   position:static; margin-top:6px; flex:none;
 }
 /* 竖排列表：行高收紧一点（一屏多放两三个），并在滚动区上下加渐隐，提示「还有内容」 */
@@ -3655,6 +3656,7 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
 <!-- 标签栏：视图开关已移到顶栏，这里只放标签本身 -->
 <div class="tabs-row">
   <div class="doc-tabs" id="docTabs"></div>
+  <button class="doc-new" id="newDocBtn" type="button" title="新建文档">+</button>
 </div>
 <div class="card">
   <!-- 原模板行已移除：模板/阅读等入口移入底部「更多」面板 -->
@@ -4689,8 +4691,9 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
         '<span class="x" data-close="' + id + '" title="关闭"><svg class="ic"><use href="#i-close"/></svg></span></div>';
     }
     if (qTab && !ids.length) html += '<span class="tab-none">无匹配标签</span>';
-    html += '<button class="doc-new" id="newDocBtn" type="button" title="新建文档">+</button>';
-    nvPlaceDocNew();
+    // 「+」不在这里生成：它由 innerHTML 产出，而竖排时需要把它移到 .doc-tabs 之外 ——
+    // 移出去的元素不会被下一次 innerHTML 清掉，于是每点一次就多一个「+」（已踩过）。
+    // 现在它是 .tabs-row 里的常驻节点（见 HTML 结构），三种位置都不需要搬动。
     // 重渲染前记住滚动位置：原来每次都 scrollLeft=scrollWidth（强制跳到最右），
     // 标签一多就永远回不到前面的标签，且每次切文档都会把视口拽走。
     const keepScroll = bar.scrollLeft;
@@ -5175,12 +5178,13 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
   // 原来它是 .doc-tabs 的最后一个子元素 + position:sticky，会浮在最后一行标签上（突兀），
   // 且鼠标滑到底部时 sticky 重排与面板宽度变化叠加会「抽搐」。
   function nvPlaceDocNew() {
+    // 「+」是 .tabs-row 里的常驻节点（不在 .doc-tabs 内），三种位置都无需搬动：
+    //   顶部/底部 → .tabs-row 横向 flex，它跟在标签列表右侧（与原行为一致）
+    //   左侧竖排 → .tabs-row 纵向 flex，它落在列表下方独立一行（不再是 sticky 浮在标签上）
+    // 这里只做一次自愈：万一被别处搬走就归位。
     const nb = document.getElementById('newDocBtn');
     const row = document.querySelector('.tabs-row');
-    const bar = document.getElementById('docTabs');
-    if (!nb || !row || !bar) return;
-    if (document.body.classList.contains('vtabs')) { if (nb.parentElement !== row) row.appendChild(nb); }
-    else if (nb.parentElement !== bar) bar.appendChild(nb);
+    if (nb && row && nb.parentElement !== row) row.appendChild(nb);
   }
 
   // 侧栏上下边界的实测对齐：top = 纸面顶，bottom = 工具栏上沿（视口 - 工具栏 top）

@@ -3280,12 +3280,21 @@ body.vtabs:not(.notes-mode) .tabs-row.expand,
 body.vtabs:not(.notes-mode) .tabs-row:focus-within {
   background:var(--card);
 }
-/* frost 下 --card 本身就是半透明白，展开态要显式给不透明白才不会透出工具栏 */
+/* frost 下 --card 本身就是半透明白，展开态要显式覆盖，否则透出工具栏的**锐利**图标 */
 [data-theme="frost"] body.vtabs:not(.notes-mode) .tabs-row.expand,
 [data-theme="frost"] body.vtabs:not(.notes-mode) .tabs-row:focus-within {
-  background:rgba(255,255,255,.97);
-  backdrop-filter:blur(var(--frost-blur)) saturate(180%);
-  -webkit-backdrop-filter:blur(var(--frost-blur)) saturate(180%);
+  /* ⚠️ alpha 不能给到 0.9+（曾用 .97）—— 那等于不透明，"毛玻璃"完全看不出来，
+     用户直接问「毛玻璃主题下怎么没有毛玻璃模糊背景」。正解是**低 alpha + 真 blur**：
+     工具栏在 z-index 下层，被 blur 糊成一片柔和色块，才是玻璃该有的样子（锐利图标才是"两层叠着"）。
+     分档参照项目玻璃规格：纸面 .46 / 卡片 .72 / 标签 .30 → 侧栏面板取卡片档再压一点，
+     因为它面积大、下面还压着一条工具栏。 */
+  background:rgba(255,255,255,.62);
+  /* ⚠️ blur 要**大于**项目默认的 --frost-blur(14px)：侧栏展开后底下压着一条工具栏，
+     14px 时工具栏图标虽已发虚但仍能认出轮廓，看着还是"压着东西"。
+     这里取 1.8 倍（默认 ≈25px），图标彻底糊成柔白色块，才是玻璃该有的观感；
+     同时 alpha 保持 .62（项目 .mb 的玻璃档），不至于淡到失去承载感。 */
+  backdrop-filter:blur(calc(var(--frost-blur, 14px) * 1.8)) saturate(180%);
+  -webkit-backdrop-filter:blur(calc(var(--frost-blur, 14px) * 1.8)) saturate(180%);
 }
 body.vtabs:not(.notes-mode) .doc-tabs {
   width:100%; flex-direction:column; align-items:stretch;

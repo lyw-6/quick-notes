@@ -3018,6 +3018,27 @@ header .right { margin-left:auto; }
    为什么可以收：多选态已经有「主色染底 + 勾选圈」这个强反馈，选中状态毫无歧义；
    而「哪几条置顶」在列表顶部的「置顶 N」分区标题里已经说清楚了，不必逐行重复。 */
 .nv-list.list .nv-item.sel .nv-title .nv-pin { display:none; }
+/* ---- 标签栏在**左侧**时：底部工具栏收进纸面宽度，让侧栏那一列下方留空 ----
+   ⚠️ 为什么之前**有意**不让位（老注释，别删）：`.doc-tabs` 的 max-height 公式
+   预留了「纸顶→工具栏上沿」整段高度，工具栏若左移，侧栏下方会出现一大块无主空白，
+   且「更多/字号」等末尾按钮要靠横向滚动才能看到 —— 当时选了"工具栏横跨、更像 Edge"。
+   ⚠️ 但现在用户明确要求：**工具栏与编辑区同宽、侧栏那一列空出来**（左侧标签模式专属，
+      top/bottom 位置下工具栏本来就与纸面对齐，无需干预）。
+   实现：left 基准 = 纸面左缘 = 工具栏原基准 + .card 的 margin-left（左侧栏 43px / 移动 42px），
+   与 .card 让位用同一个量 —— 侧栏右缘贴纸面左缘、工具栏左缘也贴纸面左缘，两条竖线重合。
+   right 不动（右缘本来就与纸面右缘齐）。特异性：body.vtabs:not(.notes-mode) = (0,2,1)，
+   能压过 1645 行的 `body #mainToolbar` = (0,1,1)。 */
+@media (min-width:768px) {
+  body.vtabs:not(.notes-mode) #mainToolbar { left:calc(max(32px, 50% - 448px) + 43px); }
+}
+@media (max-width:767px) {
+  /* 移动端纸面左缘 = 8(body padding) + 42(.card margin-left) = 50px；右缘贴 body 右内边距 8px。
+     ⚠️ 移动端原本 left/right:12px（比纸面各窄 4px），这里一并对齐到 50/8，
+     否则工具栏会同时左右各溢出 4px（实测纸面 r=382 vs 工具栏 r=378）。 */
+  body.vtabs:not(.notes-mode) #mainToolbar { left:50px; right:8px; }
+  /* 展开态（更多/样式面板）也要让位：它是独立浮层，不跟收起态走会看到面板突然变宽 */
+  body.vtabs:not(.notes-mode) #mainToolbar.expanded { left:50px; right:8px; }
+}
 /* ⚠️ flex 基准必须是 **0**（不是 auto）：flex 换行是按「基准尺寸」判定的，
    标题用 auto 时长标题的基准 = 全文宽度，勾选圈 + 标题 + 时间戳加起来超宽 →
    时间戳被挤到第二行，整行凭空多出 20px（多选态实测第一行 82 → 102）。
@@ -5573,6 +5594,11 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
       if (v === 'left') { try { bar0.scrollTop = 0; bar0.scrollLeft = 0; } catch (e) {} }
       const act = document.querySelector('.doc-tab.active');
       if (act) ensureTabVisible(act);
+      // ⚠️ 左侧栏模式下工具栏会左移收窄（与纸面同宽，见 CSS 注释），
+      // 按钮条的可滚动状态随之改变 —— 必须重算左右箭头，否则窄屏切到「左侧」后
+      // 按钮被裁掉却看不到箭头（用户无从横向滚动）。updateToolArrows 定义在下方
+      // setupToolScroll 附近，属于同一 IIFE 内的函数声明，可直接调用。
+      try { if (typeof updateToolArrows === 'function') updateToolArrows(); } catch (e) {}
     });
   }
 

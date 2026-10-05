@@ -1,22 +1,27 @@
-fix(ui): 左侧栏点标签只切换，点右侧图钉才置顶
+fix(ui): 左侧栏展开态不再被工具栏遮挡 + 手机点标签不置顶（真正的根因）
 
-用户「手机端点一下标签就置顶」。根因：`.pin` 不是 absolute，是 inline-flex
-（min 24x24 / padding 4）。左侧栏收起态标签只有 **32px** 宽，展开后面板变宽（200/224）
-但**标签本身还是 32px 方块** → 实测 pin 落 x=15..39、标签 x=9..41，几乎占满整块，
-elementFromPoint(标签中心) 命中 pin（实测返回 svg）→ click 走 if(pinBtn) → 置顶。
-手机上更明显：用 :focus-within 展开，首触就落在 pin 上。
+【1】展开态被工具栏挡住
+侧栏 z-index:60 低于工具栏 100，展开到 200/224px 后与工具栏重叠
+152x54（390）/ 176x56（1280），下半截标签被盖住。
+- z-index 60 提到 120（高于工具栏 100，仍低于 header 250 / 抽屉 260 / 弹层 270）
+- 展开态背景改不透明白（原 92% 半透明，盖在工具栏上会透出工具图标，像两层叠着）；
+  frost 下 --card 本身半透明，显式给 rgba(255,255,255,.97) + blur。
+  收起态保持原本的玻璃半透观感（48px 不与工具栏重叠）。
 
-修法（纯 CSS）：展开态把 pin 变成标签内的**独立右列**
-  pin: order:1 + flex:none + width:26px + margin:0 0 0 auto（去掉负边距）
-  title: order:0 + flex:1 1 auto   .x: order:2
-收起态 pin 早已 display:none（实测 0x0），双保险保留。
+【2】手机端点一下标签就置顶 —— 上一轮没修到点子上
+上一轮只改了「展开态图钉挪右列」，真机上依然置顶。这次抓事件序列找到真根因：
+  touchstart target=DIV.doc-tab      <- 按下时命中是对的
+  click      target=svg.ic(isPin=1)  <- 同坐标(22,179)已变成图钉
+原因：touchstart 触发 focus -> :focus-within 展开 48->200px -> 布局重排
+     -> 浏览器合成的 click 按新布局命中 pin -> if(pinBtn) -> 置顶。
+修法：touchstart 时把「按下命中的元素」存起来，click 用它判断分支，
+不受按下/抬起之间的重排影响（1s 内有效，超时回落 e.target）。
+两条路径都验证：点主体只切换（置顶为空）、点右侧图钉仍能置顶。
 
-⚠️ 测试坑（浪费两轮）：**CDP Input.dispatchTouchEvent 不触发 :focus-within**，
-用它测「点标签」会得到"仍置顶"的假象；改用 elementFromPoint + 合成 MouseEvent
-才测到真实路径（真实浏览器触摸会触发 focus）。
-另外 classList.add("expand") 后必须等 width transition（.18s）走完再量几何，
-否则量到中间值。
+测试环境：沙箱里 browser.close() 会挂死（连 about:blank 都挂），
+汇总行打印在 close 之后 -> 看不到 -> 误判「用例超时失败」。
+新增 pwfastclose.cjs 预加载（给 close 加 1.5s 超时兜底）。
 
-回归 +20 条（_verify_hover3 现 113 条）。16 套全绿。
+回归 +18 条（_verify_hover3 现 131 条）。16 套全绿。
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>

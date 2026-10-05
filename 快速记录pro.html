@@ -3262,7 +3262,7 @@ body:not(.notes-mode) #nvSearchBtn { display:inline-flex; }
    ⚠️ 移动端原来被排除（怕竖排吃掉一半屏宽），实测 48px 只占 12% 可以接受；触屏没有 hover，
       改用 :focus-within 展开（点一下标签即展开并切换，再点空白收起）。 */
 body.vtabs:not(.notes-mode) .tabs-row {
-  position:fixed; z-index:60; overflow:hidden; margin:0; padding:0;
+  position:fixed; z-index:120; overflow:hidden; margin:0; padding:0;
   display:flex; align-items:stretch;
   border-radius:14px;
   background:color-mix(in srgb, var(--card) 92%, transparent);
@@ -3271,6 +3271,21 @@ body.vtabs:not(.notes-mode) .tabs-row {
      看起来像「浮在纸旁边」而不是「和纸是一套」。层次只靠 1px 描边 + 半透底。 */
   box-shadow:none;
   transition:width .18s ease;
+}
+/* ⚠️ 展开态：z-index 已提到 120（高于工具栏 100），面板会盖住工具栏左端 150~176px
+   （实测重叠 152×54 / 176×56）。此时 92% 半透明底会让下面的工具栏图标透出来，
+   像"两层叠在一起"。展开态把底提到 **不透明**，成为一张干净的浮层。
+   ⚠️ 只在展开态改：收起态（48px）不与工具栏重叠，保持原本的玻璃半透观感。 */
+body.vtabs:not(.notes-mode) .tabs-row.expand,
+body.vtabs:not(.notes-mode) .tabs-row:focus-within {
+  background:var(--card);
+}
+/* frost 下 --card 本身就是半透明白，展开态要显式给不透明白才不会透出工具栏 */
+[data-theme="frost"] body.vtabs:not(.notes-mode) .tabs-row.expand,
+[data-theme="frost"] body.vtabs:not(.notes-mode) .tabs-row:focus-within {
+  background:rgba(255,255,255,.97);
+  backdrop-filter:blur(var(--frost-blur)) saturate(180%);
+  -webkit-backdrop-filter:blur(var(--frost-blur)) saturate(180%);
 }
 body.vtabs:not(.notes-mode) .doc-tabs {
   width:100%; flex-direction:column; align-items:stretch;
@@ -11346,12 +11361,34 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
         }
       }
 
+      // ⚠️ 触摸按下时先记下「手指真正按到的元素」（2026-10-05 修「手机端点标签就置顶」）。
+      //   根因：touchstart 落在 .doc-tab 主体上是**对的**，但这一下同时触发了 focus →
+      //   侧栏 :focus-within 展开（48 → 200px）→ 重排后**同一坐标变成了图钉的 svg**，
+      //   紧接着浏览器合成的 click 按新布局命中 pin → 走 if(pinBtn) → 置顶。
+      //   实测事件序列：touchstart target=DIV.doc-tab / click target=svg.ic(isPin=true)，
+      //   两者坐标完全相同（22,179）—— 典型的「按下与抬起之间布局变了」。
+      //   修法：把按下那一刻的命中元素存起来，click 里用它判断分支（布局变化不再影响判定）。
+      let __touchPressEl = null, __touchPressTs = 0;   // 模块级：touchstart 写、click 读
+      const tabsRowForPress = document.querySelector('.tabs-row');
+      if (tabsRowForPress && !tabsRowForPress.__pressBound) {
+        tabsRowForPress.__pressBound = 1;
+        tabsRowForPress.addEventListener('touchstart', function(e) {
+          const t = e.touches[0];
+          if (!t || !document.elementFromPoint) return;
+          __touchPressEl = document.elementFromPoint(t.clientX, t.clientY);
+          __touchPressTs = Date.now();
+        }, { passive: true });
+      }
+
       docTabs.addEventListener('click', function(e) {
-        const tab = e.target.closest('.doc-tab');
-        const closeBtn = e.target.closest('.x');
-        const pinBtn = e.target.closest('.pin');
-        const newBtn = e.target.closest('.doc-new');
-        const renameInp = e.target.closest('.tab-rename');
+        // touchstart 刚记下的按下元素优先（限 1s 内，避免陈旧值影响后续鼠标点击）
+        const src = (__touchPressEl && (Date.now() - __touchPressTs) < 1000) ? __touchPressEl : e.target;
+        __touchPressEl = null;
+        const tab = src.closest ? src.closest('.doc-tab') : e.target.closest('.doc-tab');
+        const closeBtn = src.closest ? src.closest('.x') : null;
+        const pinBtn = src.closest ? src.closest('.pin') : null;
+        const newBtn = src.closest ? src.closest('.doc-new') : null;
+        const renameInp = src.closest ? src.closest('.tab-rename') : null;
 
         if (newBtn) { e.stopPropagation(); newDoc(); return; }
         if (renameInp) { e.stopPropagation(); return; }

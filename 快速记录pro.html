@@ -3358,7 +3358,12 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     /* ⚠️ 基准与顶栏 **☰ 按钮的左边缘**一致（header 内容左缘 + 2px 内边距）——
        原来这里多加了 8px，侧栏左缘比正上方的菜单钮右移 6px（实测 menuToRail=6），
        两条竖线对不齐（用户反馈）。侧栏宽度同时收窄 56 → 48。 */
-    left:calc(max(32px, 50% - 448px) + 2px);
+    /* ⚠️ 基准与顶栏 **☰ 按钮**水平**中心**对齐（用户反馈「标签栏和菜单中心对齐」）。
+       原来对齐的是左缘：☰ 34px 宽、侧栏 48px 宽 → 左缘齐了，中心就差 (48-34)/2 = 7px，
+       侧栏整体向右偏一截，看起来没跟菜单对齐。
+       偏移量 = (☰宽 - 侧栏宽)/2 = (34-48)/2 = -7px，写进 left 与 .card 的 margin-left 同一个值，
+       侧栏右缘仍与纸面左缘贴合（实测 railToPaper 仍为 0）。 */
+    left:calc(max(32px, 50% - 448px) - 5px);
     /* 顶边对齐**纸面顶**（JS 实测写入 --vtabs-top，写死值会在移动端错位：header 高度随 safe-area 变）；
        底边按内容收缩（bottom:auto），但用 max-height 兜住、不越过工具栏上沿。 */
     top:var(--vtabs-top, 64px); bottom:auto; width:48px;
@@ -3369,8 +3374,8 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
      .on 是旧选择器名，这里同时兼容 :focus-within（键盘 Tab 聚焦标签时也会展开）。 */
   body.vtabs:not(.notes-mode) .tabs-row.expand,
   body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:224px; }
-  /* 2(与☰对齐的左缘) + 48(侧栏宽) = 50 → 纸面左缘仍贴住侧栏右缘（实测 railToPaper=0） */
-  body.vtabs:not(.notes-mode) .card { margin-left:50px; }
+  /* 与侧栏右缘贴合：左缘 -5 + 48 = 43 → 纸面左缘仍贴住侧栏右缘（实测 railToPaper=0） */
+  body.vtabs:not(.notes-mode) .card { margin-left:43px; }
   /* 高度贴合内容：不再撑满一整列（原来 5 个标签下面挂着 500px 空白面板） */
   /* ⚠️ 必须 height:100%（不能用 auto + max-height:100%）：
      面板高度是 auto + max-height 决定的，百分比 max-height 在「父高不确定」时会解析成 none，
@@ -3382,11 +3387,12 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
 @media (max-width:767px) {
   /* ⚠️ 移动端档也必须显式给 top：fixed 元素缺这项会停在原位（实测贴在 y=8） */
   body.vtabs:not(.notes-mode) .tabs-row {
-    /* left 与 ☰ 对齐（移动端 header 内容左缘 8 + 内边距 2 = 10；原来 12 → 偏 2px） */
-    left:10px; width:48px;
+    /* ⚠️ 与顶栏 ☰ **中心**对齐（移动端 ☰ 32px、侧栏 48px → 左移 (48-32)/2 = 8px）。
+       ☰ 左缘在 10px（header 内容左缘 8 + 2），居中后侧栏左缘 = 2px。 */
+    left:2px; width:48px;
     top:var(--vtabs-top, 50px); bottom:auto;
   }
-  body.vtabs:not(.notes-mode) .card { margin-left:50px; }   /* 10 + 48 - 8(body padding) = 50 */
+  body.vtabs:not(.notes-mode) .card { margin-left:42px; }   /* 2 + 48 - 8(body padding) = 42 */
   /* 触屏/键盘用 :focus-within，鼠标用 JS 的 .expand —— 两者都要有
      （原来只写 focus-within，鼠标划过去会停在「半展开」中间态）。
      ⚠️ 这里**不能**用 .tabs-row:hover：底部「+」也在面板内，鼠标落到「+」上会把面板撑开。

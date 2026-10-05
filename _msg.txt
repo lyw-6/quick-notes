@@ -1,0 +1,8 @@
+fix(ui): 左侧标签栏改为与顶栏菜单中心对齐
+
+侧栏宽 48px 而顶栏 ☰ 仅 34px（移动端 32px），原来对齐的是左缘，
+导致侧栏中心比菜单中心右偏 7~8px，看着没跟菜单对齐。
+现在改为中心对齐：left = 菜单左缘 - (侧栏宽-菜单宽)/2，
+.card 的 margin-left 同步减同一个量，纸面左缘仍贴住侧栏右缘。
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>

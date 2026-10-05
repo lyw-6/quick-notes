@@ -3281,7 +3281,12 @@ body.vtabs:not(.notes-mode) .doc-tabs {
      滚不动（30 个标签实测卡住）。这里直接限制自身高度，内容少时自然贴合、内容多时滚动。 */
   /* ⚠️ 除了 16px 边距，还要减掉「+」那一行（32 + 4 ≈ 36）—— 否则标签一多，列表把面板顶高，
      「+」落到工具栏下面被压住（实测 30 个标签时点不到，Playwright 报 toolbar intercepts pointer events）。 */
-  max-height:calc(100dvh - var(--vtabs-top, 64px) - var(--vtabs-bottom, 80px) - 56px);
+  /* ⚠️ 预留量原来是**写死的 56px**（「+」行 32 + 4 边距 + 20 余量），实测侧栏底始终比
+     工具栏上沿**低 26px**（1280 与 390 两档都是 26）—— 标签很多时列表够不到工具栏上沿，
+     侧栏下方留一条无主空白（用户「这么多标签怎么不到底部」）。
+     改由 JS 实测写入 --vtabs-reserve：量 .doc-tabs 之外那部分真实占高
+     （面板 top/bottom 边框 + 「+」行高度 − 抵消的 margin），跟样式改动自动同步。 */
+  max-height:calc(100dvh - var(--vtabs-top, 64px) - var(--vtabs-bottom, 80px) - var(--vtabs-reserve, 30px));
 }
 body.vtabs:not(.notes-mode) .doc-tab { width:100%; border-radius:10px; touch-action:pan-y; }
 body.vtabs:not(.notes-mode) .doc-tab .tab-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -5559,6 +5564,23 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
       const t = Math.round(tb.getBoundingClientRect().top);
       if (t > 0) root.setProperty('--vtabs-bottom', Math.max(8, Math.round(window.innerHeight - t)) + 'px');
     }
+    // ⚠️ 侧栏「非列表部分」的实测占高（面板上下边框 + 「+」行 − 抵消的 margin）。
+    //   写死 56px 时侧栏底恒定比工具栏上沿低 26px（标签多时列表够不到底，露出一条空白）。
+    //   这里量 .tabs-row 的总高减去 .doc-tabs 的 max-height，就是列表能占的上限；
+    //   再量一次「面板底 - 列表理论底」做交叉校验，确保 max-height 与实际布局自洽。
+    try {
+      const row = document.querySelector('.tabs-row');
+      const tabs = document.getElementById('docTabs');
+      const nb = document.getElementById('newDocBtn');
+      if (row && tabs && nb) {
+        const rs = getComputedStyle(row), ns = getComputedStyle(nb);
+        const border = parseFloat(rs.borderTopWidth) + parseFloat(rs.borderBottomWidth);
+        // 「+」行高 + 其 margin（可滚动时是 -4px，与 .doc-tabs 多出的 4px padding 相抵）
+        const plusH = nb.getBoundingClientRect().height + (parseFloat(ns.marginTop) || 0);
+        const v = Math.round(border + plusH) + 2;   // +2px 间隙：边框舍入后「+」底会与工具栏上沿重叠 1px → 点不到
+        if (v > 0 && v < 120) root.setProperty('--vtabs-reserve', v + 'px');
+      }
+    } catch (e) {}
   }
 
   function applyTabPos() {

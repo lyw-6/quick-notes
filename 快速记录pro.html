@@ -3211,7 +3211,11 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
        底边按内容收缩（bottom:auto），但用 max-height 兜住、不越过工具栏上沿。 */
     top:var(--vtabs-top, 64px); bottom:auto; width:56px;
   }
-  body.vtabs:not(.notes-mode) .tabs-row:hover,
+  /* ⚠️ 展开只由**标签列表区**触发（JS 给 .tabs-row 加 .expand），不包含底部「+」那一行：
+     「+」是居中的，鼠标移到它上面时若面板也跟着展开，它会横移 ~80px，鼠标下的目标持续变化
+     → 宽度 transition 反复重排，表现为「抽搐」，点击也容易落空。
+     .on 是旧选择器名，这里同时兼容 :focus-within（键盘 Tab 聚焦标签时也会展开）。 */
+  body.vtabs:not(.notes-mode) .tabs-row.expand,
   body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:224px; }
   body.vtabs:not(.notes-mode) .card { margin-left:64px; }
   /* 高度贴合内容：不再撑满一整列（原来 5 个标签下面挂着 500px 空白面板） */
@@ -3233,6 +3237,7 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
      原来只写 focus-within，鼠标划过去会停在「半展开」中间态：面板还是 48px 但标题已恢复显示，
      结果标题被压成 0 宽（用户截图里那一列只剩图钉和 ×）。 */
   body.vtabs:not(.notes-mode) .tabs-row:hover,
+  body.vtabs:not(.notes-mode) .tabs-row.expand,
   body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:200px; }
 }
 
@@ -10864,13 +10869,33 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     // 文档标签页
     const docTabs = $('docTabs');
     if (docTabs) {
-      // 「+」在竖排时被移出 .doc-tabs（放侧栏底部），所以在 .tabs-row 上补一层委托
+      // 「+」在 .tabs-row 内（.doc-tabs 之后），点击委托挂这里
       const tabsRowEl = document.querySelector('.tabs-row');
       if (tabsRowEl && !tabsRowEl.__newBound) {
         tabsRowEl.__newBound = 1;
         tabsRowEl.addEventListener('click', function(e) {
           if (e.target.closest('.doc-new')) { e.stopPropagation(); newDoc(); }
         });
+      }
+
+      // 竖排侧栏的展开/收起：**只由标签列表区（.doc-tabs）触发**。
+      // 原来靠 .tabs-row:hover —— 底部「+」那一行也在里面，而「+」是居中的：
+      // 鼠标移到「+」上面 → 面板展开 → 「+」横移 ~80px → 鼠标下目标变化 → 反复重排 = 抽搐。
+      // 现在 hover/focus 都只认列表区，鼠标停在「+」上时面板保持收起，「+」不动。
+      if (docTabs && !docTabs.__expandBound) {
+        docTabs.__expandBound = 1;
+        const row = document.querySelector('.tabs-row');
+        if (row) {
+          // 展开看「进入列表区」，收起看「离开整个面板」—— 两者范围不同是有意的：
+          // 鼠标从列表滑到下方「+」时仍处于面板内，面板必须**保持展开**；否则「+」会因面板
+          // 收起而横移，鼠标下的目标持续变化 → 抽搐（这正是用户反馈的那个现象）。
+          docTabs.addEventListener('mouseenter', function() { row.classList.add('expand'); });
+          row.addEventListener('mouseleave', function() { row.classList.remove('expand'); });
+          docTabs.addEventListener('focusin', function() { row.classList.add('expand'); });
+          row.addEventListener('focusout', function(e) {
+            if (!row.contains(e.relatedTarget)) row.classList.remove('expand');
+          });
+        }
       }
 
       docTabs.addEventListener('click', function(e) {

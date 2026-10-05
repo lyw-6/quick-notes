@@ -3308,8 +3308,8 @@ body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab {
 body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab.active {
   background:var(--p); border-color:var(--p); opacity:1;
 }
-body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab .tab-title,
 body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab .pin,
+body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab .tab-title,
 body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab .x { display:none; }
 body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab::before {
   content:attr(data-idx); font-size:13px; font-weight:700; line-height:1; color:var(--s);
@@ -3347,6 +3347,26 @@ body.vtabs:not(.notes-mode) #newDocBtn {
   overflow:hidden;   /* 面板宽度动画未走完时，文字不许越出面板 */
 }
 body.vtabs:not(.notes-mode) #newDocBtn .ic { width:16px; height:16px; flex:none; }
+/* ---- 展开态：图钉挪到标签**右侧独立一列**，点标签主体只做切换 ----
+   ⚠️ 根因（用户「手机端点一下标签就置顶」）：图钉 `.pin` 不是 absolute，是 inline-flex
+   （min-width 24 / min-height 24 / padding 4）。左侧栏收起态标签只有 **32px** 宽，
+   展开后 `.doc-tab` 仍是那个 32px 方块（只有面板变宽、标签本身没变宽），
+   实测 pin 落在 x=15..39、标签 x=9..41 → **pin 几乎占满整块**，
+   于是 `elementFromPoint(标签中心)` 命中的是 pin（实测 `svg` 元素），
+   click 走 `if (pinBtn)` 分支 → 置顶。手机上因为用 :focus-within 展开，首触就命中，格外明显。
+   修法：展开态把 pin 变成标签内的独立一列（`order:1` + 固定宽），
+   标签主体（`order:0` + flex:1）独占左侧 → 点主体切文档、点右侧图钉才置顶。
+   ⚠️ pin 必须显式给 `width`/`flex:none`，否则 min-width:24 撑不开；
+   还要 `justify-content:center` + 去掉它的 `margin:-2px -2px -2px 2px`（负边距会让两列贴住）。 */
+body.vtabs:not(.notes-mode) .tabs-row.expand .doc-tab .pin,
+body.vtabs:not(.notes-mode) .tabs-row:focus-within .doc-tab .pin {
+  order:1; flex:none; width:26px; min-width:26px; height:24px; min-height:24px;
+  margin:0 0 0 auto; padding:0; justify-content:center; border-radius:6px;
+}
+body.vtabs:not(.notes-mode) .tabs-row.expand .doc-tab .tab-title,
+body.vtabs:not(.notes-mode) .tabs-row:focus-within .doc-tab .tab-title { order:0; flex:1 1 auto; min-width:0; }
+body.vtabs:not(.notes-mode) .tabs-row.expand .doc-tab .x,
+body.vtabs:not(.notes-mode) .tabs-row:focus-within .doc-tab .x { order:2; }
 /* 展开态：靠左 + 图标与文字留 gap。
    ⚠️ 用 ID 选择器：frost 有 `[data-theme="frost"] #newDocBtn`（属性+ID = 110），
    普通类选择器 31 压不过它 —— 背景/描边/阴影必须在这里盖掉。 */

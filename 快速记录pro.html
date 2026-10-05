@@ -3053,6 +3053,19 @@ header .right { margin-left:auto; }
       overflow:auto/hidden（伪元素会被裁掉），且 .right 在标签栏 overflow 下会连带相邻按钮一起裁。
    注：移动端 .icon-btn 早前已是 40×40（gap 10px），此处不重复。 */
 @media (max-width:767px) {
+  /* 顶栏按钮/胶囊与标签行都收一档（用户反馈「标签栏和这一排按钮都高了」）：
+     顶栏钮 36 → 32、胶囊 36 → 32、标签块 38 → 30、标签行 44 → 36。
+     这是「紧凑」与「触控热区」的折中：32px 仍大于 Android 推荐的 24dp，实测手感可接受；
+     若嫌难点，把这里三个值一起加 2~4px 即可。 */
+  .icon-btn { width:32px; height:32px; }
+  .theme-btn { width:32px; height:32px; }
+  .view-pill { height:32px; min-width:32px; padding:0 11px; }
+  .doc-tab { padding:3px 8px; font-size:.75rem; }
+  .doc-tab .pin { width:26px; height:26px; }
+  .doc-tab .x { width:24px; height:24px; }
+  .tabs-row { padding-bottom:4px; }
+  .doc-new { width:28px; height:28px; font-size:1.05rem; }
+  .doc-tabs { padding:0 2px 4px; }
   /* 标签模式移动端也要藏「步骤 N/M」徽标：它连同内边距占 89px，是 390px 顶栏溢出 20px 的主因
      （原先的「≤767px 隐藏 .meta」只写在便签模式分支下，标签模式漏了；桌面端保持显示）。 */
   header .right .meta { display:none; }
@@ -3060,22 +3073,17 @@ header .right { margin-left:auto; }
      所以「放大热区」与「省宽度」要一起配平：钮 36（仍 ≥36 达标）+ gap 8 + 编辑态纯图标胶囊收窄，
      五项合计省出 28px，标题回到 72px。⚠️ 别再单独调大 .icon-btn，会连锁挤掉标题。 */
   header .right { gap:8px; }
-  .icon-btn { width:36px; height:36px; }
-  .theme-btn { width:36px; height:36px; }   /* 34 → 36 */
   .nv-sb-ic { width:40px; height:40px; }    /* 多选条在纸面内，不占顶栏，可放到 40 */
   .nv-ga { width:36px; height:36px; }        /* 30 → 36 */
   .nv-dr-x { width:36px; height:36px; }      /* 30 → 36 */
   /* 抽屉分组行内的重命名/删除（这两个按钮没有 .nv-ga 类，得单独点名） */
   .nv-dr-act button { width:36px; height:36px; }
   .nv-sb-x { width:36px; height:36px; }
-  .view-pill { height:36px; min-width:36px; padding:0 12px; }   /* 30 → 36；高度不影响标题宽度（宽度由 padding 决定） */
   /* 编辑态胶囊是纯图标（文字已隐藏），padding 再收窄 4px 给标题让位 */
   body.notes-mode:not(.notes-list) .view-pill { padding:0 8px; }
   .nv-chip { padding:8px 14px; min-height:36px; display:inline-flex; align-items:center; }   /* 高 29 → 36 */
   .nv-empty-clear { padding:11px 20px; }
   .nv-sheet-close { padding:14px 10px; }
-  .doc-new { width:36px; height:36px; font-size:1.15rem; }   /* 26 → 36 */
-  .doc-tab .pin { width:32px; height:32px; } /* 24 → 32，透明底视觉不变 */
   /* 标签滚动箭头：#mainToolbar .tarrow(1,0,1) 的特异性高于裸 .tarrow，这里必须也带 id 才压得住 */
   #mainToolbar .tarrow { width:30px; }  /* 26 → 30 */
 }

@@ -3146,7 +3146,9 @@ body.vtabs:not(.notes-mode) .doc-tabs {
      面板高度是 auto + max-height 决定的，父的 computed height 仍是 auto，
      子元素的 height:100% 会被解析成 auto → 标签列撑到全高、被面板 overflow:hidden 裁掉、
      滚不动（30 个标签实测卡住）。这里直接限制自身高度，内容少时自然贴合、内容多时滚动。 */
-  max-height:calc(100dvh - var(--vtabs-top, 64px) - var(--vtabs-bottom, 80px) - 16px);
+  /* ⚠️ 除了 16px 边距，还要减掉「+」那一行（32 + 4 ≈ 36）—— 否则标签一多，列表把面板顶高，
+     「+」落到工具栏下面被压住（实测 30 个标签时点不到，Playwright 报 toolbar intercepts pointer events）。 */
+  max-height:calc(100dvh - var(--vtabs-top, 64px) - var(--vtabs-bottom, 80px) - 56px);
 }
 body.vtabs:not(.notes-mode) .doc-tab { width:100%; border-radius:10px; touch-action:pan-y; }
 body.vtabs:not(.notes-mode) .doc-tab .tab-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -3156,56 +3158,68 @@ body.vtabs:not(.notes-mode) .doc-tab .tab-title { flex:1; min-width:0; overflow:
    ⚠️ 之前用「6 组色相」想解决「数字太单调」，实测反而灰蒙蒙、且当前项要靠细描边去认
    （用户截图反馈不美观）。改成：**统一浅底 + 当前项主色实底白字** ——
    层级靠对比而不是靠色相堆砌，跟主题主色联动（改主色自动跟随）。 */
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab {
+body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab {
   width:32px; height:32px; padding:0; margin:0 auto;
   border-radius:9px; border-color:transparent; background:var(--tool);
   justify-content:center; align-items:center;
 }
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab.active {
+body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab.active {
   background:var(--p); border-color:var(--p); opacity:1;
 }
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .tab-title,
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .pin,
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .x { display:none; }
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab::before {
+body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab .tab-title,
+body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab .pin,
+body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab .x { display:none; }
+body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab::before {
   content:attr(data-idx); font-size:13px; font-weight:700; line-height:1; color:var(--s);
 }
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab.active::before { color:#fff; }
+body.vtabs:not(.notes-mode) .tabs-row:not(.expand):not(:focus-within) .doc-tab.active::before { color:#fff; }
 /* 侧栏改成纵向布局：标签列表（滚动区）+ 底部固定一行的「+」。
    「+」不再是列表里的 sticky 元素 —— sticky 会浮在最后一行标签上（突兀），
    且鼠标滑到底部时 sticky 重排与面板宽度变化叠加会「抽搐」。 */
-body.vtabs:not(.notes-mode) .tabs-row { flex-direction:column; align-items:stretch; }
+/* ⚠️ gap 必须归零：.tabs-row 横排时靠 gap:6px 让「+」与标签有间隔，但竖排下它会和
+   「+」的 margin-top 叠加（6+4=10px），与标签之间的 4px 不一致（用户要求「和正常标签一样的距离」）。 */
+body.vtabs:not(.notes-mode) .tabs-row { flex-direction:column; align-items:stretch; gap:0; }
 body.vtabs:not(.notes-mode) .doc-tabs { flex:1 1 auto; }
-/* 「+」按 Edge 的写法：**上方一条分隔线 + 「＋ 新建文档」一行**。
-   位置固定靠左、图标 x 两态一致（面板展开时只有右侧文字淡入，图标不动，因此不会抽搐）。
-   ⚠️ 用 ID 选择器：frost 有 `[data-theme="frost"] #newDocBtn`（属性+ID = 110），
-   普通类选择器 31 压不过它 —— 背景/描边/阴影必须在这里盖掉。 */
+/* 「+」= 一行「＋ 新建文档」。高度 32 与标签同档，上下间距也按标签的 gap（4px）走，
+   不再用「分隔线 + 大间距」把它和列表切开（用户反馈：太远、现在有横线隔着了，按正常标签的距离就行）。 */
 body.vtabs:not(.notes-mode) #newDocBtn {
   align-self:stretch; width:auto;
-  height:34px; margin:6px 0 0; padding:0 0 0 14px;
-  /* ⚠️ 基础 .doc-new 是圆形按钮（justify-content:center），必须显式改回 flex-start，
-     否则面板展开变宽时图标会被推到中间（实测 x 从 31 → 107）。 */
-  display:flex; align-items:center; justify-content:flex-start; gap:8px;
-  border:0; border-top:1px solid var(--border); border-radius:0;
+  height:32px; margin:4px 0 0; padding:0;
+  /* 收起态：图标水平居中 → 与上方序号方块同一条中轴（宽屏下「+」才不会显得偏移）。
+     展开态：靠左对齐（见下一条规则）。 */
+  display:flex; align-items:center; justify-content:center; gap:0;
+  border:0; border-radius:0;
   background:transparent; box-shadow:none;
   color:var(--s); font-size:.82rem; font-weight:500;
   position:static; flex:none;
+  overflow:hidden;   /* 面板宽度动画未走完时，文字不许越出面板 */
 }
 body.vtabs:not(.notes-mode) #newDocBtn .ic { width:16px; height:16px; flex:none; }
-/* 文字只在展开态淡入：图标位置不动 → 无抽搐（收起态 48px 也放不下文字） */
-body.vtabs:not(.notes-mode) #newDocBtn span {
-  opacity:0; width:0; overflow:hidden; white-space:nowrap;
-  transition:opacity .14s ease;
+/* 展开态：靠左 + 图标与文字留 gap。
+   ⚠️ 用 ID 选择器：frost 有 `[data-theme="frost"] #newDocBtn`（属性+ID = 110），
+   普通类选择器 31 压不过它 —— 背景/描边/阴影必须在这里盖掉。 */
+body.vtabs:not(.notes-mode) .tabs-row.expand #newDocBtn,
+body.vtabs:not(.notes-mode) .tabs-row:focus-within #newDocBtn {
+  justify-content:flex-start; gap:8px; padding-left:14px;
 }
-/* 面板悬停（或 .expand 类、键盘聚焦）时文字淡入；图标位置不变 → 不抽搐。
-   展开条件与上面宽度规则保持一致（:hover + .expand + :focus-within 三种都支持）。 */
-body.vtabs:not(.notes-mode) .tabs-row:hover #newDocBtn span,
+/* ⚠️ 文字用 max-width 过渡，**不要** width:0 → width:auto 突变：
+   突变会让文字在面板宽度动画（.18s）走完前就满宽，被面板 overflow:hidden 从右侧切一刀，
+   看起来就是「文字溢出/被裁」（用户截图里那半个「新建」）。
+   触发条件也必须和面板宽度一致（.expand / :focus-within）——**不能带 :hover**：
+   鼠标停在「+」上时面板并不展开，此时若文字出现就会在窄面板里挤成一团。 */
+body.vtabs:not(.notes-mode) #newDocBtn span {
+  opacity:0; max-width:0; min-width:0; overflow:hidden; white-space:nowrap;
+  transition:opacity .16s ease, max-width .18s ease;
+}
 body.vtabs:not(.notes-mode) .tabs-row.expand #newDocBtn span,
-body.vtabs:not(.notes-mode) .tabs-row:focus-within #newDocBtn span { opacity:1; width:auto; }
+body.vtabs:not(.notes-mode) .tabs-row:focus-within #newDocBtn span { opacity:1; max-width:200px; }
 body.vtabs:not(.notes-mode) #newDocBtn:hover { color:var(--p); }
-/* 竖排列表：底部留 10px —— 原来只留 2px，最后一个标签的下边框几乎贴着滚动区边缘，
-   一旦渐隐生效就被一起淡掉（用户反馈「最底下那个标签边框显示不全」）。 */
-body.vtabs:not(.notes-mode) .doc-tabs { padding-bottom:10px; }
+/* 竖排列表底部不再留白：与「+」的间距统一由 margin-top:4px 决定（= 标签之间的 gap）。
+   ⚠️ 但「可滚动」时仍要留 8px 给底部渐隐垫着，否则最后一个标签的下边框会被渐隐吃掉
+   （用户反馈过「最底下标签边框不全」）；对应的「+」margin-top 用 -4px 抵消，保证间距恒为 4px。 */
+body.vtabs:not(.notes-mode) .doc-tabs { padding-bottom:0; }
+body.vtabs:not(.notes-mode) .tabs-row.can-scroll .doc-tabs { padding-bottom:8px; }
+body.vtabs:not(.notes-mode) .tabs-row.can-scroll #newDocBtn { margin-top:-4px; }
 /* ⚠️ 展开/收起**两种状态的标签必须同高**（32px）：
    原来只有收起态写了 height:32，展开态靠 padding 3px 撑出 26px →
    8 个标签就差 48px，面板高度随之变化 → 鼠标（停在原位置）掉出面板 → mouseleave 收起 →
@@ -3221,8 +3235,8 @@ body.vtabs:not(.notes-mode) .doc-tab {
 body.vtabs:not(.notes-mode) .tabs-row.can-scroll:hover .doc-tabs,
 body.vtabs:not(.notes-mode) .tabs-row.can-scroll.expand .doc-tabs,
 body.vtabs:not(.notes-mode) .tabs-row.can-scroll:focus-within .doc-tabs {
-  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 10px), transparent 100%);
-  mask-image:linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 10px), transparent 100%);
+  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+  mask-image:linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
 }
 
 /* 落点指示器：竖排时上/下横条 */
@@ -3264,10 +3278,10 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     top:var(--vtabs-top, 50px); bottom:auto;
   }
   body.vtabs:not(.notes-mode) .card { margin-left:52px; }
-  /* 触屏用 :focus-within（点一下展开），鼠标用 :hover —— 两者都要有。
-     原来只写 focus-within，鼠标划过去会停在「半展开」中间态：面板还是 48px 但标题已恢复显示，
-     结果标题被压成 0 宽（用户截图里那一列只剩图钉和 ×）。 */
-  body.vtabs:not(.notes-mode) .tabs-row:hover,
+  /* 触屏/键盘用 :focus-within，鼠标用 JS 的 .expand —— 两者都要有
+     （原来只写 focus-within，鼠标划过去会停在「半展开」中间态）。
+     ⚠️ 这里**不能**用 .tabs-row:hover：底部「+」也在面板内，鼠标落到「+」上会把面板撑开。
+     桌面档同理（见上一条），两档必须一致。 */
   body.vtabs:not(.notes-mode) .tabs-row.expand,
   body.vtabs:not(.notes-mode) .tabs-row:focus-within { width:200px; }
 }

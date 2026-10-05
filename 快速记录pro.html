@@ -2603,8 +2603,8 @@ body.notes-mode .nv-dr-export { display:none; }
 }
 .nv-sec .ic { width:12px; height:12px; color:var(--s); }
 .nv-sec .n { font-weight:500; opacity:.75; }
-.nv-list.list .nv-sec { padding:12px 6px 4px; }
-.nv-list.detail .nv-sec { grid-column:1 / -1; padding:12px 2px 2px; }
+.nv-list.list .nv-sec { padding:8px 6px 4px; }
+.nv-list.detail .nv-sec { grid-column:1 / -1; padding:6px 2px 2px; }
 /* 编辑态标题：多标签栏隐藏后用它定位当前笔记（紧跟在返回键右边） */
 .nv-ed-title {
   display:none; flex:1; min-width:0; text-align:left;
@@ -2643,8 +2643,10 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 
 .nv-groups {
   display:flex; gap:8px; flex-shrink:0; overflow-x:auto; scrollbar-width:none;
-  /* 同上：分组条与列表之间不再拉一条直角硬线，靠底色差与间距自然分隔 */
-  padding:10px 12px;
+  /* 同上：分组条与列表之间不再拉一条直角硬线，靠底色差与间距自然分隔。
+     ⚠️ 下内边距归零：原来 10(这里) + 8(列表 padding-top) + 12(分区 padding-top) = 30px，
+     「全部 12」与「最近 12」之间空得像断成两段（用户反馈"离太远"）→ 合计收到 16px。 */
+  padding:10px 12px 0;
 }
 .nv-groups::-webkit-scrollbar { display:none; }
 .nv-chip {
@@ -2663,6 +2665,18 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
   flex:1; min-height:0; overflow-y:auto; width:100%; max-width:880px; margin:0 auto;
   padding:8px 12px calc(100px + env(safe-area-inset-bottom, 0px));
 }
+/* 列表滚动条：Windows / 桌面 Chromium 默认是 15px 宽、带上下箭头的一整块，贴在纸面右缘
+   会和 22px 圆角打架（用户反馈"滚动条和圆角视觉冲突"）。改成 8px 细条 + 透明轨道 +
+   四边内缩 2px 的圆角滑块（border:transparent + background-clip:content-box 实现内缩），
+   滑块不再贴住纸面圆角。与项目里 #ed / .doc-tabs / .nv-groups「隐藏滚动条」的取舍一致：
+   列表是主滚动区，保留一个细提示（而不是完全隐藏），但别抢视觉。 */
+.nv-list::-webkit-scrollbar { width:8px; }
+.nv-list::-webkit-scrollbar-track { background:transparent; }
+.nv-list::-webkit-scrollbar-thumb {
+  background:color-mix(in srgb, var(--s) 26%, transparent);
+  border-radius:4px; border:2px solid transparent; background-clip:content-box;
+}
+.nv-list::-webkit-scrollbar-thumb:hover { background:color-mix(in srgb, var(--s) 45%, transparent); background-clip:content-box; }
 .nv-list.detail { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:10px; align-content:start; }
 .nv-item {
   display:flex; align-items:flex-start; gap:8px; padding:11px 12px; margin-bottom:8px;

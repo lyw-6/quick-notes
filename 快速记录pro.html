@@ -2952,6 +2952,11 @@ header .right { margin-left:auto; }
 .nv-list.detail .nv-title { flex:none; line-height:1.3; max-height:2.6em; overflow:hidden; }
 .nv-list.detail .nv-excerpt { flex:1 1 auto; min-height:0; }
 .nv-list.detail .nv-meta { margin-top:auto; }
+/* 空笔记（.no-ex，没有摘要行）：时间戳**紧跟标题**，不再被 margin-top:auto 推到卡底。
+   原来那样标题在顶(12px)、时间在底(116px)，中间 80 多 px 全白，像没做完的空壳（用户反馈）。
+   同时允许这类卡片收矮到 108px；同一行里若混有带摘要的卡片，grid 每行拉伸会把它们对齐 ✓。 */
+.nv-list.detail .nv-item.no-ex { height:auto; min-height:108px; }
+.nv-list.detail .nv-item.no-ex .nv-meta { margin-top:8px; }
 /* 多选圈在网格态改绝对定位到右上角：它是 flex 子项时会额外占掉一整行高，
    固定高度下会把卡片撑破 */
 .nv-list.detail .nv-chk { position:absolute; top:9px; right:9px; margin-top:0; }
@@ -5161,7 +5166,9 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
         if (i > 60) ex = '…' + text.slice(i - 40);
       }
       ex = ex.slice(0, 200);
-      return '<div class="nv-item' + (nvSelMode && nvSel.indexOf(id) >= 0 ? ' sel' : '') + '" data-id="' + id + '">' +
+      // .no-ex = 该笔记没有摘要（空笔记/纯标题）。详情视图靠它决定「时间戳沉底还是紧跟标题」，
+      // 不用 :has() —— 旧 WebView 不支持，JS 直接打标最稳。
+      return '<div class="nv-item' + (nvSelMode && nvSel.indexOf(id) >= 0 ? ' sel' : '') + (ex ? '' : ' no-ex') + '" data-id="' + id + '">' +
         (nvSelMode ? '<span class="nv-chk"><svg class="ic"><use href="#i-check"/></svg></span>' : '') +
         '<div class="nv-main">' +
           '<div class="nv-title">' + (d.pinned ? '<svg class="ic nv-pin"><use href="#i-pin-tab"/></svg>' : '') +

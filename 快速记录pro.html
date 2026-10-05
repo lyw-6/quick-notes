@@ -3129,22 +3129,26 @@ body.vtabs:not(.notes-mode) .doc-tab { width:100%; border-radius:10px; touch-act
 body.vtabs:not(.notes-mode) .doc-tab .tab-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* 收起态：只留「显示序号」这个身份标识（Edge 收起态只显示 favicon）。
    ⚠️ 本来用标题首字，但文档多叫「文档1/2/3」→ 全是「文」没有区分度，改用顺序号。 */
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab { justify-content:center; padding:7px 0; }
+/* 收起态：每个标签是一个 32×32 方块，里面是显示序号。
+   ⚠️ 之前用「6 组色相」想解决「数字太单调」，实测反而灰蒙蒙、且当前项要靠细描边去认
+   （用户截图反馈不美观）。改成：**统一浅底 + 当前项主色实底白字** ——
+   层级靠对比而不是靠色相堆砌，跟主题主色联动（改主色自动跟随）。 */
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab {
+  width:32px; height:32px; padding:0; margin:0 auto;
+  border-radius:9px; border-color:transparent; background:var(--tool);
+  justify-content:center; align-items:center;
+}
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab.active {
+  background:var(--p); border-color:var(--p); opacity:1;
+}
 body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .tab-title,
 body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .pin,
 body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab .x { display:none; }
 body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab::before {
-  content:attr(data-idx); font-size:12px; font-weight:700; line-height:1;
+  content:attr(data-idx); font-size:13px; font-weight:700; line-height:1; color:var(--s);
 }
-/* 只用数字 1/2/3… 太单调（用户反馈）→ 按序号循环 6 组色相：浅色底 + 同色数字。
-   颜色都取低饱和（15~16% 混色），不花，只为让每个标签一眼可区分。 */
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab:nth-child(6n+1) { background:color-mix(in srgb,#5b8def 16%,var(--card)); }
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab:nth-child(6n+2) { background:color-mix(in srgb,#22a06b 16%,var(--card)); }
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab:nth-child(6n+3) { background:color-mix(in srgb,#e0803c 16%,var(--card)); }
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab:nth-child(6n+4) { background:color-mix(in srgb,#c050c8 15%,var(--card)); }
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab:nth-child(6n+5) { background:color-mix(in srgb,#2fa8c4 16%,var(--card)); }
-body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab:nth-child(6n+6) { background:color-mix(in srgb,#d45b6a 15%,var(--card)); }
-body.vtabs:not(.notes-mode) .doc-new { align-self:center; }
+body.vtabs:not(.notes-mode) .tabs-row:not(:hover):not(:focus-within) .doc-tab.active::before { color:#fff; }
+body.vtabs:not(.notes-mode) .doc-new { align-self:center; width:32px; height:32px; border-radius:9px; }
 /* 展开态「+」跟着面板居中（原来只有收起态居中，展开后靠左、跟上方标签左缘对齐但显得歪） */
 body.vtabs:not(.notes-mode) .tabs-row:hover .doc-new,
 body.vtabs:not(.notes-mode) .tabs-row:focus-within .doc-new { margin:0 auto; }

@@ -2650,10 +2650,15 @@ body.notes-mode:not(.notes-list) #nvBackBtn { display:inline-flex; }
 }
 .nv-groups::-webkit-scrollbar { display:none; }
 .nv-chip {
-  flex:none; padding:5px 12px; border-radius:999px; font-size:13px; white-space:nowrap;
+  /* 2026-10-05 收一档（用户：「全部 / 新建分组是不是大了点」）。实测移动端 390px：
+     原 font 13 / pad 5px 12px（桌面 69×29）或 8px 14px（移动 73×36），横向偏厚。
+     ⚠️ **高度不动**：移动端 min-height:36px 是触控热区铁律，且 .nv-groups 是 overflow:auto
+     ——伪元素撑热区会被裁，只能靠真实尺寸，改小就点不准了。
+     只收字号与横向 padding：药丸看着立刻轻一档，热区与命中区完全不变。 */
+  flex:none; padding:5px 10px; border-radius:999px; font-size:12.5px; white-space:nowrap;
   background:var(--card); border:1px solid var(--border); color:var(--t); cursor:pointer;
 }
-.nv-chip .cnt { font-size:12px; color:var(--s); margin-left:4px; }
+.nv-chip .cnt { font-size:11.5px; color:var(--s); margin-left:3px; }
 .nv-chip.on {
   background:color-mix(in srgb, var(--p) 16%, transparent);
   border-color:color-mix(in srgb, var(--p) 45%, transparent);
@@ -3182,7 +3187,7 @@ header .right { margin-left:auto; }
   .nv-sb-x { width:36px; height:36px; }
   /* 编辑态胶囊是纯图标（文字已隐藏），padding 再收窄 4px 给标题让位 */
   body.notes-mode:not(.notes-list) .view-pill { padding:0 8px; }
-  .nv-chip { padding:8px 14px; min-height:36px; display:inline-flex; align-items:center; }   /* 高 29 → 36 */
+  .nv-chip { padding:7px 12px; min-height:36px; display:inline-flex; align-items:center; }   /* 高 29 → 36；横向 14 → 12 */
   .nv-empty-clear { padding:11px 20px; }
   .nv-sheet-close { padding:14px 10px; }
   /* 标签滚动箭头：#mainToolbar .tarrow(1,0,1) 的特异性高于裸 .tarrow，这里必须也带 id 才压得住 */

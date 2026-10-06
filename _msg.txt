@@ -1,5 +1,9 @@
-fix: frost 侧边抽屉毛玻璃修复 + 回收站多选
+feat: 标签栏右键菜单（对齐 Edge）+ 修复位置还原
 
-- frost 抽屉发黑灰：遮罩 .34→.20+blur、抽屉本体白玻璃 .62+blur(25px)、行按钮关 blur（透明底不模糊原则）
-- 回收站页新增多选：头部「多选」入口 + 长按条目进入，底部 .nv-selbar 操作条（全选/恢复/彻底删除），批量按下标降序 splice
-- _verify_dr +5 条 frost 断言；新增 verify_binmul 29 断言；删除引用旧 UI(#viewSeg/#vTabsToggle) 的 3 套死套件
+- 右击标签：关闭标签页 / 关闭其他 / 关闭右侧 / 置顶 / 重新打开已关闭的标签
+- 右击标签栏空白或 + 钮：新建标签页 / 关闭其他 / 关闭全部 / 重新打开
+- 菜单位于 body 下 position:fixed z-index 275，贴边自动翻转；frost 下为真玻璃
+- pointerType=touch 不弹菜单（保住移动端长按拖动排序）
+- fix: 重新打开位置还原失效（nd 构造时把待恢复项跳过，splice 位置白算）
+- fix: 关闭全部不再被至少留一个的护栏整条拒绝，改为关到只剩 1 个
+- 新增 verify_tabctx 33 断言；17 套回归全绿

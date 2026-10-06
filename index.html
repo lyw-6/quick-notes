@@ -3663,6 +3663,37 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
 .nv-bin-page.selmode .nv-bin-row .nv-bin-act { display:none; }
 .nv-bin-page.selmode #nvBinMulti,
 .nv-bin-page.selmode #nvBinClear { display:none; }
+
+/* ---- ⑥ 标签栏右键菜单（电脑端，对齐 Edge）----
+   ⚠️ 必须 position:fixed 挂 document.body：.tabs-row / .doc-tabs 在竖排模式下带
+   overflow 裁剪，弹层放进去会被切掉（同自定义下拉的老教训）。层级 275 高于弹层 270。 */
+#tabCtxMenu {
+  position:fixed; display:none; flex-direction:column; min-width:184px; padding:5px;
+  border-radius:11px; z-index:275;
+  background:var(--card); border:1px solid var(--border);
+  box-shadow:0 10px 30px rgba(20,30,60,.18);
+  animation:tabCtxIn .12s ease;
+}
+@keyframes tabCtxIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+#tabCtxMenu.on { display:flex; }
+#tabCtxMenu button {
+  display:flex; align-items:center; gap:9px; width:100%; padding:8px 9px; border-radius:8px;
+  border:none; background:transparent; color:var(--t); font:inherit; font-size:.85rem;
+  cursor:pointer; text-align:left;
+}
+#tabCtxMenu button:hover:not(:disabled) { background:var(--tool-h); }
+#tabCtxMenu button:disabled { opacity:.38; cursor:default; }
+#tabCtxMenu button .ic { width:15px; height:15px; color:var(--s); flex:none; }
+#tabCtxMenu button.danger, #tabCtxMenu button.danger .ic { color:#ff4d4f; }
+#tabCtxMenu .sep { height:1px; background:var(--border); margin:4px 6px; }
+/* frost：真玻璃（同 .nv-more-dd 一档白度），行内按钮关 blur —— 有玻璃底才模糊 */
+[data-theme="frost"] #tabCtxMenu {
+  background:rgba(255,255,255,calc(var(--frost-alpha) * 0.82));
+  backdrop-filter:blur(var(--frost-blur)) saturate(180%);
+  -webkit-backdrop-filter:blur(var(--frost-blur)) saturate(180%);
+  border-color:rgba(255,255,255,.50);
+}
+[data-theme="frost"] #tabCtxMenu button { backdrop-filter:none; -webkit-backdrop-filter:none; }
 </style>
 <script>
 (function(){
@@ -4024,6 +4055,8 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     <button class="nv-dr-row nv-dr-export" id="nvDrExport" type="button"><svg class="ic"><use href="#i-md"/></svg><span class="nm">导出全部为 MD</span></button>
   </aside>
 </div>
+<!-- 标签栏右键菜单（电脑端，对齐 Edge：关闭 / 关闭其他 / 关闭右侧 / 置顶 / 重新打开） -->
+<div id="tabCtxMenu" role="menu"></div>
 <!-- 便签模式：回收站**独立页面**（不套用标签模式管理弹窗里的那个回收站 tab） -->
 <div class="nv-bin-page" id="nvBinPage">
   <div class="nv-bin-head">
@@ -5360,7 +5393,8 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
       nextId = order[i + 1] || order[i - 1] || null;
     }
     let bin = loadJSON('gw_bin', []);
-    bin.unshift({ id, title: doc.title, html: doc.html, ts: Date.now() });
+    // pinned/ord 一并存：标签栏右键菜单的「重新打开已关闭的标签」要还原置顶态与原位置
+    bin.unshift({ id, title: doc.title, html: doc.html, ts: Date.now(), pinned: !!doc.pinned, ord: Object.keys(docs).indexOf(id) });
     if (bin.length > 20) bin = bin.slice(0, 20);
     saveJSON('gw_bin', bin);
     delete docs[id];
@@ -5380,6 +5414,140 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     saveDocs();
     gcImages();
     toast('已移至回收站');
+  }
+
+  // ---------- 标签栏右键菜单（电脑端，对齐 Edge） ----------
+  // 菜单项：关闭标签页 / 关闭其他标签页 / 关闭右侧标签页 / 置顶 / 重新打开已关闭的标签；
+  // 右击标签栏空白处（含「+」按钮）则是：新建标签页 / 关闭其他 / 关闭全部 / 重新打开。
+  let tabCtxDoc = null;
+  function tabDisplayOrder() {
+    return Object.keys(docs).sort((a, b) => (docs[b].pinned ? 1 : 0) - (docs[a].pinned ? 1 : 0));
+  }
+  // 回收站里最近一条「已不在标签栏中」的原标签记录（供「重新打开」）
+  function findClosedTab() {
+    const bin = loadJSON('gw_bin', []);
+    for (let i = 0; i < bin.length; i++) {
+      const it = bin[i];
+      if (it && it.id && !docs[it.id]) return { i: i, it: it };
+    }
+    return null;
+  }
+  function closeTabCtx() {
+    const m = $('tabCtxMenu');
+    if (m) m.classList.remove('on');
+    tabCtxDoc = null;
+  }
+  function openTabCtx(x, y, docId) {
+    const m = $('tabCtxMenu');
+    if (!m) return;
+    const order = tabDisplayOrder();
+    const n = order.length;
+    const i = docId ? order.indexOf(docId) : -1;
+    const nRight = i >= 0 ? n - i - 1 : 0;
+    const canReopen = !!findClosedTab();
+    const rows = [];
+    function item(act, label, icon, opt) {
+      opt = opt || {};
+      rows.push({ act: act, label: label, icon: icon, dis: !!opt.dis, danger: !!opt.danger });
+    }
+    function sep() { rows.push({ sep: true }); }
+    if (docId) {
+      item('ctx-close', '关闭标签页', '#i-close', { danger: true, dis: n <= 1 });
+      item('ctx-others', '关闭其他标签页', '#i-slash', { dis: n <= 1 });
+      item('ctx-right', '关闭右侧标签页', '#i-chev-r', { dis: nRight <= 0 });
+      sep();
+      item('ctx-pin', docs[docId].pinned ? '取消置顶' : '置顶标签页', '#i-pin-tab');
+      sep();
+      item('ctx-reopen', '重新打开已关闭的标签', '#i-restore', { dis: !canReopen });
+    } else {
+      item('ctx-new', '新建标签页', '#i-plus');
+      sep();
+      item('ctx-others', '关闭其他标签页', '#i-slash', { dis: n <= 1 });
+      item('ctx-all', '关闭全部标签页', '#i-close', { danger: true, dis: n <= 1 });
+      sep();
+      item('ctx-reopen', '重新打开已关闭的标签', '#i-restore', { dis: !canReopen });
+    }
+    m.innerHTML = rows.map(function(r) {
+      if (r.sep) return '<div class="sep"></div>';
+      return '<button type="button" role="menuitem" data-act="' + r.act + '"' + (r.dis ? ' disabled' : '') +
+        (r.danger ? ' class="danger"' : '') + '><svg class="ic"><use href="' + r.icon + '"/></svg><span>' + r.label + '</span></button>';
+    }).join('');
+    m.classList.add('on');
+    // 贴边翻转：靠右/靠下时改为向上向左展开，避免出屏
+    const r = m.getBoundingClientRect();
+    let left = x, top = y;
+    if (left + r.width > window.innerWidth - 8) left = Math.max(8, window.innerWidth - r.width - 8);
+    if (top + r.height > window.innerHeight - 8) top = Math.max(8, y - r.height);
+    m.style.left = left + 'px';
+    m.style.top = top + 'px';
+    tabCtxDoc = docId;
+  }
+  // 批量关闭：一次写回收站、一次重渲染、一次 toast（不走逐个 closeDoc，避免 N 次重排+toast）
+  // keepOne=true（关闭全部）时不是整条拒绝，而是**关到只剩 1 个** —— 与 closeDoc 的
+  // 「至少保留一个文档」护栏一致；保留谁优先取当前标签，其次取显示序第一个。
+  function ctxCloseMany(ids, keepId, keepOne) {
+    const total = Object.keys(docs).length;
+    let targets = (ids || []).filter(function(id) { return id && id !== keepId && docs[id]; });
+    if (!targets.length) return;
+    if (targets.length >= total) {
+      if (!keepOne) { toast('至少保留一个标签页'); return; }
+      const order0 = tabDisplayOrder();
+      const survivor = (activeId && docs[activeId] && targets.indexOf(activeId) >= 0)
+        ? activeId
+        : (order0.filter(function(id) { return targets.indexOf(id) >= 0; })[0] || targets[0]);
+      targets = targets.filter(function(id) { return id !== survivor; });
+    }
+    const order = Object.keys(docs);
+    const doomed = {};
+    targets.forEach(function(id) { doomed[id] = 1; });
+    let bin = loadJSON('gw_bin', []);
+    // 按显示序升序 unshift → 回收站里越靠前越是最后关的（与 closeDoc 的 newest-first 一致）
+    targets.slice().sort(function(a, b) { return order.indexOf(a) - order.indexOf(b); }).forEach(function(id) {
+      const d = docs[id];
+      bin.unshift({ id: id, title: d.title, html: d.html, ts: Date.now(), pinned: !!d.pinned, ord: order.indexOf(id) });
+      delete docs[id]; delete undoStacks[id]; delete redoStacks[id];
+    });
+    if (bin.length > 20) bin = bin.slice(0, 20);
+    saveJSON('gw_bin', bin);
+    if (doomed[activeId]) {
+      const rest = order.filter(function(id) { return !doomed[id] && docs[id]; });
+      activeId = rest[0] || '';
+      const ed = $('ed');
+      if (ed && docs[activeId]) { ed.innerHTML = docs[activeId].html || '<p><br></p>'; updatePlaceholder(); resolveDocImages(ed); }
+    }
+    if (!docs[activeId]) { const k = Object.keys(docs)[0]; if (k) { activeId = k; const ed2 = $('ed'); if (ed2) { ed2.innerHTML = docs[k].html || '<p><br></p>'; updatePlaceholder(); } } }
+    renderTabs();
+    updateStats();
+    saveDocs();
+    gcImages();
+    toast(targets.length > 1 ? ('已关闭 ' + targets.length + ' 个标签页，可在回收站找回') : '已移至回收站');
+  }
+  // 重新打开：取回收站里最近一条原标签记录，还原**原 id / 原位置 / 原置顶态**（docs 键序即标签序）
+  function ctxReopenClosed() {
+    const found = findClosedTab();
+    if (!found) { toast('没有可重新打开的标签'); return; }
+    const bin = loadJSON('gw_bin', []);
+    const it = bin.splice(found.i, 1)[0];
+    saveJSON('gw_bin', bin);
+    const order = Object.keys(docs);
+    const pos = Math.max(0, Math.min(typeof it.ord === 'number' ? it.ord : order.length, order.length));
+    order.splice(pos, 0, it.id);
+    // ⚠️ 先把记录放进临时表，再按 order 顺序拷贝 —— 否则 `if (docs[k])` 会把这条（此刻已不在
+    // docs 里）跳过，最后 `nd[it.id]=` 追加到末尾，splice 算出来的位置就白算了（实测 d3 跑末尾）。
+    const rec = { title: it.title || '文档', html: it.html || '', ts: Date.now(), pinned: !!it.pinned };
+    const src = {}; src[it.id] = rec;
+    const nd = {};
+    order.forEach(function(k) { if (k === it.id) nd[k] = rec; else if (docs[k]) nd[k] = docs[k]; });
+    docs = nd;
+    undoStacks[it.id] = [it.html || ''];
+    redoStacks[it.id] = [];
+    activeId = it.id;
+    const ed = $('ed');
+    if (ed) { ed.innerHTML = docs[it.id].html || '<p><br></p>'; updatePlaceholder(); resolveDocImages(ed); }
+    renderTabs();
+    updateStats();
+    saveDocs();
+    toast('已重新打开「' + (it.title || '文档') + '」');
   }
 
   // ============================================================
@@ -11637,6 +11805,50 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
         e.preventDefault();
         closeDoc(tab.dataset.doc);
       });
+
+      // 右键菜单（电脑端，对齐 Edge）。绑在 .tabs-row 上：空白处/「+」按钮上右击 = 空白档菜单。
+      // ⚠️ pointerType==='touch' 必须放行 —— 移动端长按标签是「拖动排序」，不能被菜单吃掉。
+      const tabsRow = docTabs.closest ? docTabs.closest('.tabs-row') : null;
+      const ctxHost = tabsRow || docTabs;
+      ctxHost.addEventListener('contextmenu', function(e) {
+        if (e.pointerType === 'touch') return;
+        const tab = e.target.closest ? e.target.closest('.doc-tab') : null;
+        const id = tab ? tab.getAttribute('data-doc') : null;
+        e.preventDefault();
+        if (id && docs[id]) openTabCtx(e.clientX, e.clientY, id);
+        else openTabCtx(e.clientX, e.clientY, null);
+      });
+      const ctxMenu = $('tabCtxMenu');
+      if (ctxMenu) {
+        ctxMenu.addEventListener('click', function(e) {
+          const b = e.target.closest ? e.target.closest('button[data-act]') : null;
+          if (!b || b.disabled) return;
+          const act = b.getAttribute('data-act');
+          const id = tabCtxDoc;
+          closeTabCtx();
+          if (act === 'ctx-close') ctxCloseMany([id]);
+          else if (act === 'ctx-others') ctxCloseMany(Object.keys(docs), id);
+          else if (act === 'ctx-right') {
+            const o = tabDisplayOrder();
+            const i = o.indexOf(id);
+            ctxCloseMany(i >= 0 ? o.slice(i + 1) : []);
+          } else if (act === 'ctx-all') ctxCloseMany(Object.keys(docs), null, true);
+          else if (act === 'ctx-new') newDoc();
+          else if (act === 'ctx-reopen') ctxReopenClosed();
+          else if (act === 'ctx-pin' && id && docs[id]) {
+            docs[id].pinned = !docs[id].pinned;
+            if (docs[id].pinned) moveDocToFront(id);
+            saveDocs(); renderTabs();
+            toast(docs[id].pinned ? '已置顶' : '已取消置顶');
+          }
+        });
+        // 菜单外点击 / Esc / 窗口变化 → 收起
+        document.addEventListener('pointerdown', function(e) {
+          if (ctxMenu.classList.contains('on') && !ctxMenu.contains(e.target)) closeTabCtx();
+        }, true);
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeTabCtx(); });
+        window.addEventListener('resize', closeTabCtx);
+      }
 
       // 桌面端：鼠标滚轮悬停在标签栏上 → 横向滚动标签（移动端靠手指滑动，不触发 wheel）
       // 内容溢出时才接管，且一律吞掉事件，避免滚到尽头后把滚动传导给编辑器。

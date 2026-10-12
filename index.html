@@ -2497,25 +2497,22 @@ body.nv-searching #nvSearchBtn { display:none !important; }
 .nv-drawer {
   position:absolute; left:0; top:0; bottom:0; width:min(80vw, 300px);
   display:flex; flex-direction:column; gap:6px; overflow-y:auto;
-  padding:14px 12px calc(18px + env(safe-area-inset-bottom, 0px));
+  padding:max(env(safe-area-inset-top, 0px), 14px) 12px calc(18px + env(safe-area-inset-bottom, 0px));
   background:var(--card); border-right:1px solid var(--border);
+  border-radius:0 18px 18px 0;   /* 左锚抽屉：右侧两角圆角（2026-10-13 用户要求直角改圆角） */
   box-shadow:8px 0 28px rgba(15,23,42,.16);
   animation:slideRight .2s ease;
 }
 @keyframes slideRight { from { transform:translateX(-14px); opacity:.4; } to { transform:none; opacity:1; } }
 .nv-dr-head { display:flex; align-items:center; justify-content:space-between; padding:2px 4px 8px; }
 .nv-dr-title { font-size:.95rem; font-weight:700; color:var(--t); }
-.nv-dr-x {
-  width:30px; height:30px; border-radius:50%; border:none; background:var(--tool-h);
-  color:var(--t); cursor:pointer; display:flex; align-items:center; justify-content:center;
-}
-.nv-dr-x .ic { width:15px; height:15px; }
 .nv-dr-sec { display:flex; flex-direction:column; gap:6px; }
-.nv-dr-h { font-size:11px; color:var(--s); padding:6px 6px 2px; font-weight:600; }
+.nv-dr-h { font-size:11px; color:var(--s); padding:8px 8px 8px; font-weight:600; letter-spacing:.02em; }
 .nv-dr-list { display:flex; flex-direction:column; gap:4px; }
 .nv-dr-row {
-  display:flex; align-items:center; gap:9px; width:100%; padding:10px 10px; border-radius:10px;
+  display:flex; align-items:center; gap:9px; width:100%; padding:10px 10px; border-radius:12px;
   border:none; background:var(--ed-bg); color:var(--t); font:inherit; font-size:.85rem; cursor:pointer; text-align:left;
+  transition:background .15s, color .15s;
 }
 .nv-dr-row .ic { width:16px; height:16px; color:var(--s); flex:none; }
 .nv-dr-row .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -2532,12 +2529,13 @@ body.nv-searching #nvSearchBtn { display:none !important; }
 .nv-dr-act .ic { width:14px; height:14px; }
 .nv-dr-add {
   display:flex; align-items:center; justify-content:center; gap:6px; width:100%; padding:9px;
-  border-radius:10px; border:1px dashed var(--border-s); background:transparent; color:var(--s);
+  border-radius:12px; border:1px dashed var(--border-s); background:transparent; color:var(--s);
   font:inherit; font-size:.82rem; cursor:pointer;
+  transition:background .15s, border-color .15s, color .15s;
 }
 .nv-dr-add:hover { border-color:var(--p); color:var(--p); }
 .nv-dr-add .ic { width:14px; height:14px; }
-.nv-dr-empty { font-size:.78rem; color:var(--s); padding:4px 8px 8px; }
+.nv-dr-empty { font-size:12px; color:var(--s); opacity:.85; padding:4px 8px 12px; }
 /* 回收站：不用「其他」分类，margin-top:auto 把它压到抽屉最底部 */
 .nv-dr-bin { margin-top:auto; }
 .nv-dr-bin .cnt { min-width:20px; text-align:center; padding:1px 6px; border-radius:999px; background:var(--tool-h); }
@@ -2549,17 +2547,17 @@ body:not(.notes-mode) #nvDrGroupSec { display:none; }
 /* 导出入口只给标签模式；⚠️ 类名不能叫 .nv-dr-act —— 那是抽屉分组行里「重命名/删除」按钮容器
    的既有类名（display:flex），撞名会把便签模式下那两个按钮一起隐藏（已踩过）。 */
 body.notes-mode .nv-dr-export { display:none; }
-.nv-dr-doc { display:flex; align-items:center; gap:8px; padding:9px 10px; border-radius:10px;
+.nv-dr-doc { display:flex; align-items:center; gap:8px; padding:9px 10px; border-radius:12px;
   border:none; background:transparent; color:var(--t); font:inherit; font-size:14px; cursor:pointer;
-  text-align:left; width:100%; -webkit-appearance:none; appearance:none; }
+  text-align:left; width:100%; -webkit-appearance:none; appearance:none;
+  transition:background .15s, color .15s; }
 .nv-dr-doc:hover { background:var(--tool-h); }
 .nv-dr-doc.on { background:color-mix(in srgb, var(--p) 14%, transparent); color:var(--p); font-weight:600; }
 .nv-dr-doc .ic { width:15px; height:15px; color:var(--s); flex:none; }
 .nv-dr-doc.on .ic { color:var(--p); }
 .nv-dr-doc .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .nv-dr-doc .tm { font-size:11px; color:var(--s); flex:none; }
-.nv-dr-doc.on .tm { color:var(--p); opacity:.75; }
-.nv-dr-empty { padding:8px 8px 2px; font-size:12px; color:var(--s); }
+.nv-dr-doc.on .tm { color:var(--s); opacity:1; }  /* 原 --p @75% ≈3.5:1 不达 AA，随 .nv-chip.on .cnt 同款修复改 --s */
 
 /* ---- 便签回收站独立页面 ---- */
 .nv-bin-page {
@@ -3227,7 +3225,6 @@ header .right { margin-left:auto; }
   header .right { gap:8px; }
   .nv-sb-ic { width:40px; height:40px; }    /* 多选条在纸面内，不占顶栏，可放到 40 */
   .nv-ga { width:36px; height:36px; }        /* 30 → 36 */
-  .nv-dr-x { width:36px; height:36px; }      /* 30 → 36 */
   /* 抽屉分组行内的重命名/删除（这两个按钮没有 .nv-ga 类，得单独点名） */
   .nv-dr-act button { width:36px; height:36px; }
   .nv-sb-x { width:36px; height:36px; }
@@ -3244,7 +3241,6 @@ header .right { margin-left:auto; }
 @media (min-width:768px) {
   .view-pill { height:32px; }                /* 28 → 32，与 34px 图标钮协调 */
   .nv-ga { width:32px; height:32px; }
-  .nv-dr-x { width:32px; height:32px; }
 }
 body.notes-mode:not(.notes-list) .view-pill { padding:0 9px; }
 /* chip / 抽屉行内的计数：选中态原本是主色 + opacity .75（合成后仅 3.66:1）→ 改回次要色。
@@ -3798,15 +3794,18 @@ body.bg-custom .theme-btn:hover { background:rgba(255,255,255,.40); }
 #viewPill, .theme-wrap { display:none; }
 /* ② 步骤徽标现在在顶栏左组（☰ 之后）：尺寸与按钮协调，不吃弹性宽度 */
 .h-left .undo-stack-info { flex:none; margin:0 2px 0 8px; }
-/* ③ 抽屉里的**长条分段控件**（iOS segmented 那种：一个长条槽 + 里面分段切换，不是各自独立的胶囊）
-   视图 2 段 / 主题 4 段；选中段填卡片色 + 轻投影，未选中透明，靠槽底色区分。 */
+/* ③ 抽屉里的**长条分段控件**（圆角矩形槽 + 内嵌分段切换，不是各自独立的胶囊）
+   视图 2 段 / 主题 4 段；选中段填卡片色 + 轻投影，未选中透明，靠槽底色区分。
+   圆角与抽屉卡片族（文档行/分组行/添加按钮）统一 12px；内段按同心圆角取 12−3(padding)=9px。 */
 .nv-dr-seg {
   display:flex; gap:2px; padding:3px; width:100%;
-  border-radius:999px; background:var(--tool-h); border:1px solid var(--border);
+  border-radius:12px; background:var(--tool-h); border:1px solid var(--border);
+  margin-top:-9px;  /* 对齐「区头→内容文字」距离：分段按钮垂直居中使字形离盒顶≈12px（文档行仅 9px，差 3），
+                       且本区 boxGap(14) 比文档区(8) 多 6，合计上提 9 与「全部文档→文档」的 17px 拉齐 */
 }
 .nv-seg-btn {
   flex:1 1 0; min-width:0; display:inline-flex; align-items:center; justify-content:center; gap:4px;
-  padding:6px 6px; min-height:32px; border-radius:999px;
+  padding:6px 6px; min-height:32px; border-radius:9px;
   border:none; background:transparent; color:var(--s);
   font-size:.78rem; white-space:nowrap; cursor:pointer;
   transition:background .15s, color .15s, box-shadow .15s;
@@ -3831,9 +3830,10 @@ body.bg-custom .theme-btn:hover { background:rgba(255,255,255,.40); }
 body.bg-custom { --press-bg: rgba(255,255,255,.55); }
 header .icon-btn:active,
 .doc-new:active,
-.nv-dr-x:active,
 .h-left .undo-stack-info:active,
-#nvDrawerClose:active { background:var(--press-bg); }
+.nv-dr-row:active,
+.nv-dr-doc:active,
+.nv-dr-add:active { background:var(--press-bg); }
 /* 步骤徽标是可点的（切换步骤↔字数），给一个指针反馈 */
 .h-left .undo-stack-info { cursor:pointer; }
 /* ⑤ 提示类元素一律带主题色（2026-10-12 用户要求：不要清一色黑白灰）
@@ -4212,7 +4212,6 @@ body.notes-mode.notes-list #undoStackInfo { display:none; }
   <aside class="nv-drawer" id="nvDrawer">
     <div class="nv-dr-head">
       <span class="nv-dr-title" id="nvDrTitle">菜单</span>
-      <button class="nv-dr-x" id="nvDrawerClose" type="button" title="关闭"><svg class="ic"><use href="#i-close"/></svg></button>
     </div>
     <!-- 标签模式：文档侧边栏（置顶 + 全部文档）。标签和便签是同一份 docs 数据，
          所以这里既能当「文档导航」也能补上标签模式缺失的回收站入口。 -->
@@ -4236,6 +4235,11 @@ body.notes-mode.notes-list #undoStackInfo { display:none; }
         <button class="nv-seg-btn" data-view-mode="notes" type="button"><svg class="ic"><use href="#i-list"/></svg><span>便签</span></button>
       </div>
     </div>
+    <!-- 回收站：不要「其他」分类，直接压在抽屉最底部（margin-top:auto） -->
+    <button class="nv-dr-row nv-dr-bin" id="nvDrBin" type="button"><svg class="ic"><use href="#i-trash"/></svg><span class="nm">回收站</span><span class="cnt" id="nvBinCnt">0</span></button>
+    <!-- 导出：标签模式专用（便签模式已经有 ⋯ 里的「导出全部为 MD」，不重复摆两个入口） -->
+    <button class="nv-dr-row nv-dr-export" id="nvDrExport" type="button"><svg class="ic"><use href="#i-md"/></svg><span class="nm">导出全部为 MD</span></button>
+    <!-- 主题：2026-10-13 用户要求放到抽屉最底部（视图仍紧邻分组区） -->
     <div class="nv-dr-sec" id="nvDrThemeSec">
       <div class="nv-dr-h">主题</div>
       <div class="nv-dr-seg nv-dr-seg-theme" id="nvDrThemeSeg">
@@ -4245,10 +4249,6 @@ body.notes-mode.notes-list #undoStackInfo { display:none; }
         <button class="nv-seg-btn" data-theme-name="green" type="button"><svg class="ic"><use href="#i-green"/></svg><span>护眼</span></button>
       </div>
     </div>
-    <!-- 回收站：不要「其他」分类，直接压在抽屉最底部（margin-top:auto） -->
-    <button class="nv-dr-row nv-dr-bin" id="nvDrBin" type="button"><svg class="ic"><use href="#i-trash"/></svg><span class="nm">回收站</span><span class="cnt" id="nvBinCnt">0</span></button>
-    <!-- 导出：标签模式专用（便签模式已经有 ⋯ 里的「导出全部为 MD」，不重复摆两个入口） -->
-    <button class="nv-dr-row nv-dr-export" id="nvDrExport" type="button"><svg class="ic"><use href="#i-md"/></svg><span class="nm">导出全部为 MD</span></button>
   </aside>
 </div>
 <!-- 标签栏右键菜单（电脑端，对齐 Edge：关闭 / 关闭其他 / 关闭右侧 / 置顶 / 重新打开） -->
@@ -6086,7 +6086,7 @@ body.notes-mode.notes-list #undoStackInfo { display:none; }
     const open = on === undefined ? !ov.classList.contains('on') : !!on;
     if (open) nvMoreToggle(false);          // 两层浮层不叠加
     ov.classList.toggle('on', open);
-    if (open) { nvRenderDrawer(); nvSyncDrSegs(); }
+    if (open) { nvRenderDrawer(); nvSyncDrSegs(); const dp = $('nvDrawer'); if (dp) { dp.style.transition = ''; dp.style.transform = ''; } }
   }
   // 抽屉里两条长条分段控件（视图 标签/便签、主题 四档）的选中态同步
   function nvSyncDrSegs() {
@@ -6921,8 +6921,41 @@ body.notes-mode.notes-list #undoStackInfo { display:none; }
     // 抽屉遮罩点击关闭
     const drOv = $('nvDrawerOv');
     if (drOv) drOv.addEventListener('click', function(e) { if (e.target === drOv) nvDrawerToggle(false); });
-    const drX = $('nvDrawerClose');
-    if (drX) drX.addEventListener('click', function() { nvDrawerToggle(false); });
+    // 手机端：在抽屉面板上「左滑关闭」（2026-10-13：原先只支持遮罩点击 / Esc，移动端没有右键/键盘）
+    const drPanel = $('nvDrawer');
+    if (drPanel) {
+      let sx = 0, sy = 0, dx = 0, drag = false;
+      drPanel.addEventListener('touchstart', function(e) {
+        if (!drOv.classList.contains('on')) return;
+        const t = e.touches[0]; sx = t.clientX; sy = t.clientY; dx = 0; drag = false;
+      }, { passive:true });
+      drPanel.addEventListener('touchmove', function(e) {
+        if (!drOv.classList.contains('on')) return;
+        const t = e.touches[0];
+        const mx = t.clientX - sx, my = t.clientY - sy;
+        if (!drag) {
+          // 横向位移占主导才开始拖（避免和竖向滚动打架）
+          if (Math.abs(mx) > 12 && Math.abs(mx) > Math.abs(my)) drag = true;
+          else return;
+        }
+        dx = Math.min(0, mx);                 // 只允许向左拖
+        drPanel.style.transition = 'none';
+        drPanel.style.transform = 'translateX(' + dx + 'px)';
+        if (e.cancelable) e.preventDefault();  // 横向拖动时禁掉竖向滚动
+      }, { passive:false });
+      drPanel.addEventListener('touchend', function() {
+        if (!drag) return;
+        drPanel.style.transition = 'transform .2s ease';
+        if (dx < -80) {                        // 超过阈值：滑出后关闭
+          drPanel.style.transform = 'translateX(-100%)';
+          setTimeout(function() { nvDrawerToggle(false); drPanel.style.transition = ''; drPanel.style.transform = ''; }, 200);
+        } else {                               // 没超过：弹回
+          drPanel.style.transform = '';
+          setTimeout(function() { drPanel.style.transition = ''; }, 200);
+        }
+        drag = false; dx = 0;
+      });
+    }
 
     // ---- 侧边抽屉：分组（筛选 / 重命名 / 删除 / 新增）+ 回收站 ----
     const menuBtn = $('nvMenuBtn');

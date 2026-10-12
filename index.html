@@ -3717,6 +3717,23 @@ body.ed-preview .ed-placeholder { display:none; }
 body.ed-preview #mainToolbar {
   transform:translateY(calc(100% + 40px)); opacity:0; pointer-events:none;
 }
+
+/* ===== P0 修复（2026-10-12 审计） ===== */
+/* ① 「步骤 N/M」徽标：dark 主题字色 --s(#94a3b8) 压在 --tool-h(#334155) 上只有 4.04:1。
+   提亮到 #c3cede → 6.44:1（其余三主题已达标：light 5.24 / frost 7.36 / green 6.38）。
+   ⚠️ 别用混黑提深——dark 底色本身就是深色，混黑会不升反降。 */
+[data-theme="dark"] .undo-stack-info { color:#c3cede; }
+/* ② 视图胶囊退最左后与竖排标签栏右缘相切：实测 390px 重叠 4px、360px 8px、768/800/900px 3px
+   （header z-index 250 压过侧栏 120）。加 6px 左距分开；便签模式没有侧栏，只是整体右移 6px，无害。 */
+@media (max-width:919px) {
+  #viewPill { margin-left:6px; }
+}
+/* 极窄档（≤383px，覆盖 375 那台「icon 30px + header gap 2px」的紧排档）侧栏仍是 48px 满宽，
+   普通档 6px 不够 → 加到 12px。实测：320/360 间距 4px、375 间距 4px、390 间距 2px，均无重叠；
+   顶栏零溢出。⚠️ 边界不能写 374——375px 视口踩在「header 紧凑档」上，会被漏掉。 */
+@media (max-width:383px) {
+  #viewPill { margin-left:12px; }
+}
 </style>
 <script>
 (function(){

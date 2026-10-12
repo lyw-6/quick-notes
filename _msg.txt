@@ -1,7 +1,7 @@
-fix: P0 审计修复 —— dark 步骤徽标对比度 + 视图胶囊压侧栏
+feat: P1-6 键盘焦点环 + P1-3 经实测为误报（不改）
 
-- ① dark 主题「步骤 N/M」徽标 4.04:1 不达标（--s #94a3b8 压 --tool-h #334155）→ 字色提亮 #c3cede，实测 6.51:1。其余三主题本就达标（light 5.24 / frost 7.36 / green 6.38）
-- ② 视图胶囊退最左后压住竖排标签栏右缘：320~900px 全档位实测重叠 2~8px（header z250 压侧栏 120）→ ≤919px 加 6px 左距、≤383px 极窄档 12px（375px 踩在 header 紧凑档上，边界不能写 374）
-- 修后全档位：间距 2~4px、顶栏零溢出；四主题徽标对比度全部 ≥4.5
-- verify_preview +7 断言（M1 dark 对比度 / M2 六档胶囊间距）；verify_pillD 旧意图「胶囊贴 ☰」改为「间距 2~16px」
-- 18 套回归全绿
+- 新增统一焦点环 :focus-visible{outline:2px solid var(--p);outline-offset:2px}（原本只有浏览器默认 outline:auto 1px，深色底几乎看不见）；dark 用 #60a5fa 提可见度
+- 只在键盘导航时出现，触摸不触发；输入框类既有 border-color 替代方案特异性更高，不受影响
+- P1-3「detail 卡片底部不齐」经精确测量为误报：有摘要卡全部 144px 高 + meta 贴底 12px，本来就整齐；唯一差异是无摘要卡 meta 紧跟标题——那是用户明确要求过的（固定 144px + 贴底会留 80px 大白）
+- 试过 align-items:start 让无摘要卡真收矮 108px，会破坏「卡片一律 144px」这条已被 verify_accent_n 锁定的要求，已回退
+- verify_preview +3 断言（N1 卡片同高/贴底正向锁 + N2 焦点环）；18 套回归全绿

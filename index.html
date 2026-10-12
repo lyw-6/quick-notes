@@ -3734,6 +3734,21 @@ body.ed-preview #mainToolbar {
 @media (max-width:383px) {
   #viewPill { margin-left:12px; }
 }
+
+/* ===== P1 修复（2026-10-12 审计） ===== */
+/* ③ detail 卡片对齐：**经精确测量为误报，不改**。
+   实测（1280/900/800px）：有摘要卡全部 144px 高、meta 贴底 12px，本来就整齐；
+   唯一「不同」的是无摘要卡（.no-ex）的 meta 紧跟标题（52/33px）——那是用户明确要求过的
+   （见 2975 行注释：固定 144px + 时间戳贴底会留 80px 大白，"像没做完的空壳"）。
+   曾试过 `align-items:start` 让 no-ex 真收矮 108px，但会破坏「卡片一律 144px」这条
+   已被 verify_accent_n 锁定的既有要求（"所有卡片同高"），故回退。 */
+
+/* ⑥ 键盘焦点环：原先只有浏览器默认 `outline:auto 1px`，深色/彩色底上几乎看不见。
+   统一 2px 主色环 + 2px 外扩（只在键盘导航时出现，触摸不触发，不影响移动端）。
+   ⚠️ 输入框类的既有 `border-color` 替代方案特异性更高（如 `.fm2 input:focus`），不受影响。 */
+:focus-visible { outline:2px solid var(--p); outline-offset:2px; }
+/* 圆钮/胶囊的环贴着圆形轮廓更好看（offset 2px 已足够，这里只补暗底上的可见度） */
+[data-theme="dark"] :focus-visible { outline-color:#60a5fa; }
 </style>
 <script>
 (function(){

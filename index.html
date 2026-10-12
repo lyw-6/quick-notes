@@ -3749,6 +3749,52 @@ body.ed-preview #mainToolbar {
 :focus-visible { outline:2px solid var(--p); outline-offset:2px; }
 /* 圆钮/胶囊的环贴着圆形轮廓更好看（offset 2px 已足够，这里只补暗底上的可见度） */
 [data-theme="dark"] :focus-visible { outline-color:#60a5fa; }
+
+/* ===== 用户要求（2026-10-12）：主题按钮统一「无背景」+ 便签编辑态去掉模式胶囊 ===== */
+/* ① 主题切换按钮的根因：`.theme-btn` 基础规则**没设 color** → 继承到黑色。
+   light/green 下黑图标勉强能用，但 dark 下黑图标压在深色顶栏（#0f172a）上几乎看不见
+   （用户截图反馈「深色主题看不清切换主题按钮」）。改成跟随主题正文色 --t。 */
+.theme-btn { background:transparent; border:none; color:var(--t); }
+/* ② frost 下这组「白玻璃」整组去掉（☰/🔍/⋯/撤销/重做/返回/新建/主题）：
+   只把主题钮改透明会变成「一个透明 + 一堆白底」，比原来更乱 —— 源码原注释里当初把它们
+   统一成白玻璃，动机正是「无底透明图标与旁边的白圆钮并存显得杂乱」；现在白圆钮没了，
+   这个理由不成立。去掉后 frost 顶栏统一为「透明图标 + 深色图标」，图标色从 var(--p)
+   （indigo 压浅玻璃约 3.8:1）换成 --t（≈12:1），反而更清楚。
+   ⚠️ frost 下透明底必须**显式 backdrop-filter:none** —— `[data-theme="frost"] button`
+      会给所有按钮加 blur，无白底承载时 blur 会在渐变上糊出深色方斑（踩过多次的坑）。 */
+[data-theme="frost"] #newDocBtn,
+[data-theme="frost"] #undoBtn,
+[data-theme="frost"] #redoBtn,
+[data-theme="frost"] #nvBackBtn,
+[data-theme="frost"] #themeBtn,
+[data-theme="frost"] #nvMenuBtn,
+[data-theme="frost"] #nvSearchBtn,
+[data-theme="frost"] #nvMoreBtn {
+  background:transparent; border-color:transparent; box-shadow:none;
+  backdrop-filter:none; -webkit-backdrop-filter:none; color:var(--t);
+}
+[data-theme="frost"] #newDocBtn:hover,
+[data-theme="frost"] #undoBtn:hover,
+[data-theme="frost"] #redoBtn:hover,
+[data-theme="frost"] #nvBackBtn:hover,
+[data-theme="frost"] #themeBtn:hover,
+[data-theme="frost"] #nvMenuBtn:hover,
+[data-theme="frost"] #nvSearchBtn:hover,
+[data-theme="frost"] #nvMoreBtn:hover { background:var(--tool-h); }
+/* ③ 壁纸模式：也去掉主题钮的白玻璃底（用户要求的「都去掉背景」）。
+   壁纸可能是深色，深色图标会糊 → 图标改用顶栏同款深色 + 一圈白色光晕兜底
+   （drop-shadow 对单色 svg 相当于描边，深色壁纸上也能看清轮廓）。
+   其余壁纸控件（.view-pill / .doc-new 等）保持白玻璃 —— 它们承载可读性，用户没要求改。 */
+body.bg-custom .theme-btn {
+  background:transparent; border-color:transparent; box-shadow:none;
+  backdrop-filter:none; -webkit-backdrop-filter:none;
+  color:#2b3245;
+  filter:drop-shadow(0 0 1.5px rgba(255,255,255,.9)) drop-shadow(0 1px 1px rgba(255,255,255,.75));
+}
+body.bg-custom .theme-btn:hover { background:rgba(255,255,255,.40); }
+/* ④ 便签模式「点进文档」后不再显示切换标签模式的胶囊（用户要求：编辑态去掉，免得误触切走）。
+   列表态保留 —— 那是切回标签模式的入口（连同顶栏 ☰ 抽屉）。 */
+body.notes-mode:not(.notes-list) #viewPill { display:none; }
 </style>
 <script>
 (function(){

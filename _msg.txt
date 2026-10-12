@@ -1,7 +1,9 @@
-feat: P1-6 键盘焦点环 + P1-3 经实测为误报（不改）
+fix: 主题钮统一无背景（修深色看不见）+ 便签编辑态去掉模式胶囊
 
-- 新增统一焦点环 :focus-visible{outline:2px solid var(--p);outline-offset:2px}（原本只有浏览器默认 outline:auto 1px，深色底几乎看不见）；dark 用 #60a5fa 提可见度
-- 只在键盘导航时出现，触摸不触发；输入框类既有 border-color 替代方案特异性更高，不受影响
-- P1-3「detail 卡片底部不齐」经精确测量为误报：有摘要卡全部 144px 高 + meta 贴底 12px，本来就整齐；唯一差异是无摘要卡 meta 紧跟标题——那是用户明确要求过的（固定 144px + 贴底会留 80px 大白）
-- 试过 align-items:start 让无摘要卡真收矮 108px，会破坏「卡片一律 144px」这条已被 verify_accent_n 锁定的要求，已回退
-- verify_preview +3 断言（N1 卡片同高/贴底正向锁 + N2 焦点环）；18 套回归全绿
+- 主题钮根因：.theme-btn 基础规则没设 color → 继承到黑色，dark 下黑图标压深色顶栏几乎看不见 → 改为 color:var(--t) 跟随主题（dark 变亮白，实测可辨）
+- 去掉主题钮在 frost / 壁纸下的白玻璃底（用户要求「都去掉背景」）；frost 那一整组顶栏白玻璃（☰/🔍/⋯/撤销/重做/返回/新建）一并去掉，否则「一个透明 + 一堆白底」更乱；图标色从 var(--p)（indigo 压浅玻璃 3.8:1）换成 var(--t)（≈12:1）
+- 壁纸模式主题钮无背景 + 深色图标 + 白色光晕兜底深色壁纸（drop-shadow 对单色 svg 相当于描边）
+- frost 下透明底显式 backdrop-filter:none（[frost] button 会给所有按钮加 blur，无白底承载时糊出深色方斑）
+- 便签模式点进文档（编辑态）不再显示切换标签模式的胶囊，列表态保留（切回标签的入口在列表 + 抽屉）
+- verify_preview +18 断言（O1 五档主题钮无背景/可见性 + O2 便签编辑态胶囊隐藏）；pillD/vt2/accent_n/wallglass 旧意图断言按新行为改（编辑态点胶囊 → 改走返回键回列表再切）
+- 18 套回归全绿

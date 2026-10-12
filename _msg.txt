@@ -1,10 +1,10 @@
-feat: 标签模式「预览态」——点文档只读浏览，点正文才进编辑
+feat: 便签视图同规格预览态 + 手机端顶栏「步骤」徽标回归
 
-- 预览态：点标签/开文档不再自动聚焦进编辑；#ed 只读（contenteditable=false）
-- 正文上方新增 meta 行「最后更新时间 MM-DD HH:mm · N 字」，1px 分割线与正文隔开
-- 预览态底部工具栏收起；点正文进入编辑后 meta 行消失、工具栏显示
-- 退出编辑：点正文/工具栏/浮层之外（mousedown capture），或编辑态按 Esc → 回预览态并保存
-- 新建文档 / 便签模式点条目 / 标签栏「重新打开」仍直接进编辑（显式打开语义）
-- 便签模式无预览态；沉浸阅读进出时摘/恢复 ed-preview
-- fix: mousedown 退出逻辑漏判 notes-mode → 便签模式点任意处都会误触发保存（刷新 ts）并打上 ed-preview
-- 新增 verify_preview 40 断言；_verify_dr/_verify_hover3/_verify_tabpos 补「先进编辑态」步骤（工具栏收起后 #moreBtn 不再可点）；18 套回归全绿
+- 便签视图：列表点条目先停在预览态（只读 + meta 行 + 工具栏收起），点正文才进编辑；返回列表摘掉预览态
+- switchDoc 增加 {preview:true} 语义（列表重开同一条目也走预览态，修 id===activeId 路径漏设）
+- 便签编辑态点外部/H 键退出编辑与标签模式一致；edExitEdit 守卫由 notes-mode 收窄为 notes-list（列表态无编辑器）
+- mousedown 白名单补顶栏功能钮（撤销/重做/主题/胶囊/抽屉/返回/搜索/⋯）：编辑中点撤销不再先退出编辑
+- fix: 手机端「步骤 N/M」两处隐藏规则改为回归（用户反馈看不到步骤）：隐藏 saveStatus + 文案压成 N/M，390px 仅占 26px，标题仍有 102px
+- fix: 去掉「≤767px 下 .wc-tip{display:none!important}」——徽标回归后长按必须能弹字数统计
+- 测试：verify_preview 40→59（便签预览态 10 条 + 手机端徽标 5 条）、verify_wctip 81→89、_verify_wctip_pin 14→16（三处旧意图断言按新行为改）
+- 18 套回归全绿

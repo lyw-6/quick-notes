@@ -327,9 +327,10 @@ header .meta { font-size:.65rem; color:var(--s); display:flex; gap:4px; align-it
 .wc-tip.pin { border-color:color-mix(in srgb, var(--p) 42%, var(--border)); }
 .wc-tip.pin::before { border-color:color-mix(in srgb, var(--p) 42%, var(--border)); }
 /* 徽标不可见的态，气泡必须一起隐藏（否则会孤零零挂在顶栏）：
-   便签列表态（顶栏右排整体隐藏）、窄屏（≤767px 徽标让位给标题/按钮）。 */
+   只剩「便签列表态」（顶栏右排整体隐藏、没有编辑器也就没有字数可看）。
+   ⚠️ 原先还有一条「≤767px 隐藏 .wc-tip」——那是配合「手机端徽标整体隐藏」的。
+   2026-10-12 手机端徽标已回归（紧凑 N/M 档），这条必须一起去掉，否则长按徽标弹了个 display:none。 */
 body.notes-mode.notes-list .wc-tip { display:none !important; }
-@media (max-width:767px) { .wc-tip { display:none !important; } }
 /* 绿色护眼主题：--tool-h(#edf6f0) 与 --bg(#eef7f0) 几乎同色，徽标边界消失，
    且 --s 字色仅 3.38:1。单独加深字色/底色/描边，并保证徽标与页头可区分 */
 [data-theme="green"] .undo-stack-info {
@@ -2619,9 +2620,10 @@ body.notes-mode .nv-dr-export { display:none; }
 body.notes-mode:not(.notes-list) .nv-ed-title { display:block; }
 body.notes-mode:not(.notes-list) header { justify-content:flex-start; }
 @media (max-width:767px) {
-  /* 便签编辑态（手机）：返回+标题+视图开关+撤销/重做+主题已占满 390px，
-     「步骤 1/1」徽标让位，否则标题会被挤成一个字 */
-  body.notes-mode:not(.notes-list) header .meta { display:none !important; }
+  /* 便签编辑态（手机）：「步骤 N/M」徽标不再整体隐藏（用户反馈"手机端便签视图顶部怎么没有步骤"）。
+     空间从两处省：① 隐藏 #saveStatus（"已保存"提示，占位但常驻 opacity:0）；
+     ② 文案在 JS 里压成 N/M（见 updateUndoStackInfo）。390px 实测徽标仅 26px，
+     笔记标题从 140 → 102px，仍能看清 6~7 个字，顶栏不溢出。 */
   /* 返回键移到最左后这一排更挤 → 模式胶囊退成纯图标（~38px），宽度让给标题 */
   body.notes-mode:not(.notes-list) .view-pill { padding:0 10px; }
   body.notes-mode:not(.notes-list) .view-pill span { display:none; }
@@ -3214,9 +3216,11 @@ header .right { margin-left:auto; }
   .tabs-row { padding-bottom:4px; }
   .doc-new { width:28px; height:28px; font-size:1.05rem; }
   .doc-tabs { padding:0 2px 4px; }
-  /* 标签模式移动端也要藏「步骤 N/M」徽标：它连同内边距占 89px，是 390px 顶栏溢出 20px 的主因
-     （原先的「≤767px 隐藏 .meta」只写在便签模式分支下，标签模式漏了；桌面端保持显示）。 */
-  header .right .meta { display:none; }
+  /* 「步骤 N/M」徽标（2026-10-12）：原先移动端整体隐藏，手机上完全看不到步骤。
+     现在回归并压到最紧凑：隐藏「已保存」提示 + 文案压成 N/M（JS 侧），实测只占 26px。 */
+  header .right .meta { display:flex; gap:4px; margin-right:0; }
+  header .meta #saveStatus { display:none; }
+  header .meta .undo-stack-info { font-size:10px; padding:0 3px; height:16px; }
   /* 顶栏在 390px 上已经贴着极限（加一个搜索钮就溢出 4px、编辑态标题被挤到 44px），
      所以「放大热区」与「省宽度」要一起配平：钮 36（仍 ≥36 达标）+ gap 8 + 编辑态纯图标胶囊收窄，
      五项合计省出 28px，标题回到 72px。⚠️ 别再单独调大 .icon-btn，会连锁挤掉标题。 */
@@ -5411,21 +5415,30 @@ body.ed-preview #mainToolbar {
     edToolbarShow(true);
   }
 
-  // 退出编辑（保存 + 回预览态）。便签模式没有预览态，直接忽略 ——
-  // ⚠️ 不能只靠调用方判断：否则便签模式下点任意处都会走 saveCurrentDoc（刷新 ts）
-  //    并把 body 打上 ed-preview。
+  // 退出编辑（保存 + 回预览态）。便签【列表态】没有编辑器、也就没有预览态，直接忽略 ——
+  // ⚠️ 不能只靠调用方判断：否则列表态点任意处都会走 saveCurrentDoc（刷新 ts）
+  //    并把 body 打上 ed-preview。便签编辑态是有预览态的（与标签模式一致）。
   function edExitEdit() {
     if (edPreview) return;
-    if (document.body.classList.contains('notes-mode')) return;
+    if (document.body.classList.contains('notes-list')) return;
     saveCurrentDoc();
     edSetPreview(true);
   }
 
+  // 当前是否有「可见的编辑器」：便签列表态 / 标签模式的列表页没有 → 不适用预览态
+  function edHasVisibleEditor() {
+    return !document.body.classList.contains('notes-list');
+  }
+
   function switchDoc(id, opt) {
     const wantEdit = !!(opt && opt.edit);
+    const wantPreview = !!(opt && opt.preview);
     if (id === activeId) {
-      // 预览态点当前标签 → 进入编辑；编辑态点当前标签 → 不动（保持编辑）
-      if (wantEdit || edPreview) edEnterEdit();
+      // 显式语义优先：新建/便签打开要编辑，列表重开要预览；
+      // 都没有时（标签栏点当前标签）→ 预览态进编辑、编辑态不动
+      if (wantEdit) { edEnterEdit(); return; }
+      if (wantPreview) { edSetPreview(true); return; }
+      if (edPreview) edEnterEdit();
       return;
     }
     saveCurrentDoc();
@@ -5520,8 +5533,8 @@ body.ed-preview #mainToolbar {
     }
     renderTabs();
     updateStats();
-    // 标签模式关掉当前/其他标签后，编辑器切到相邻文档 → 按预览态呈现（便签模式不适用）
-    if (!nvIsNotes()) edSetPreview(true);
+    // 关掉当前标签后编辑器切到相邻文档 → 按预览态呈现（列表态没有编辑器，跳过）
+    if (edHasVisibleEditor()) edSetPreview(true);
     saveDocs();
     gcImages();
     toast('已移至回收站');
@@ -5629,8 +5642,8 @@ body.ed-preview #mainToolbar {
     if (!docs[activeId]) { const k = Object.keys(docs)[0]; if (k) { activeId = k; const ed2 = $('ed'); if (ed2) { ed2.innerHTML = docs[k].html || '<p><br></p>'; updatePlaceholder(); } } }
     renderTabs();
     updateStats();
-    // 批量关闭后编辑器切到幸存文档 → 预览态（便签模式不适用）
-    if (!nvIsNotes()) edSetPreview(true);
+    // 批量关闭后编辑器切到幸存文档 → 预览态（列表态没有编辑器，跳过）
+    if (edHasVisibleEditor()) edSetPreview(true);
     saveDocs();
     gcImages();
     toast(targets.length > 1 ? ('已关闭 ' + targets.length + ' 个标签页，可在回收站找回') : '已移至回收站');
@@ -5660,7 +5673,7 @@ body.ed-preview #mainToolbar {
     renderTabs();
     updateStats();
     // 重新打开 = 打开已有文档 → 预览态（与 switchDoc 默认行为一致）
-    if (nvIsNotes()) edSetPreview(false); else edSetPreview(true);
+    if (edHasVisibleEditor()) edSetPreview(true);
     saveDocs();
     toast('已重新打开「' + (it.title || '文档') + '」');
   }
@@ -6289,7 +6302,7 @@ body.ed-preview #mainToolbar {
     else document.body.classList.remove('notes-list');
     nvSyncModeBtn();
     if (nvIsNotes()) {
-      // 便签模式无预览态（列表→编辑器是显式「打开编辑」语义），清掉标签模式残留
+      // 便签模式首屏是列表：列表态没有编辑器 → 摘掉预览态（点条目由 nvOpenNote 进预览态）
       edSetPreview(false);
       nvRenderAll(); nvSyncEdTitle();
     } else {
@@ -6317,18 +6330,20 @@ body.ed-preview #mainToolbar {
     // 从编辑页返回时清掉多选态，避免回到列表还挂着勾选框
     if (nvSelMode) { nvSelMode = false; nvSel = []; }
     document.body.classList.add('notes-list');
+    // 列表态没有编辑器 → 摘掉预览态标记（下次点条目由 nvOpenNote 重新进入预览态）
+    edSetPreview(false);
     nvRenderAll();
     nvSyncSelBar();
   }
 
   function nvOpenNote(id) {
-    switchDoc(id, { edit: true });     // 便签列表点条目 = 显式打开编辑，不走标签模式的预览态
+    // 便签视图与标签视图同规格：打开笔记先停在**预览态**（只读 + 顶部 meta 行 + 工具栏收起），
+    // 点正文才进编辑
+    switchDoc(id, { preview: true });
     document.body.classList.remove('notes-list');
     document.body.classList.remove('nv-searching');   // 进编辑器时收起顶栏搜索框（查询词保留，回列表仍是过滤态）
     nvMoreToggle(false);
     nvSyncEdTitle();
-    const ed = $('ed');
-    if (ed) ed.focus();
   }
 
   function nvNewNote() {
@@ -6968,7 +6983,9 @@ body.ed-preview #mainToolbar {
     const pos = u.length;
     const info = $('undoStackInfo');
     if (info) {
-      info.textContent = '步骤 ' + pos + '/' + total;
+      // 手机端顶栏余量极小：文案压成「N/M」（配 title 与长按气泡说明），比「步骤 N/M」省 22px
+      const compact = window.matchMedia('(max-width:767px)').matches;
+      info.textContent = (compact ? '' : '步骤 ') + pos + '/' + total;
       info.title = '历史记录步数：第 ' + pos + ' 步 / 共 ' + total + ' 步（Ctrl+Z 回退，Ctrl+Y 前进）\n长按查看字数统计';
     }
   }
@@ -6991,7 +7008,7 @@ body.ed-preview #mainToolbar {
     }
     function place() {
       const bb = badge.getBoundingClientRect(), hb = hd.getBoundingClientRect();
-      // 徽标被隐藏（便签列表态 / 窄屏让位）时气泡跟着关掉，别让它孤零零挂着
+      // 徽标被隐藏（便签列表态）时气泡跟着关掉，别让它孤零零挂着
       if (!bb.width || !bb.height) { hide(); return; }
       tip.style.right = Math.max(2, hb.right - bb.right + 4) + 'px';
       tip.style.top = (bb.bottom - hb.top + 7) + 'px';
@@ -11283,8 +11300,8 @@ body.ed-preview #mainToolbar {
       } else {
         ed.setAttribute('contenteditable', 'true');
         if (typeof lsExit === 'function') lsExit();
-        // 退出阅读回到标签模式 → 恢复预览态（便签模式不适用）
-        if (!nvIsNotes()) edSetPreview(true);
+        // 退出阅读回到「有可见编辑器」的界面 → 恢复预览态
+        if (edHasVisibleEditor()) edSetPreview(true);
       }
     }
   }
@@ -13236,12 +13253,15 @@ body.ed-preview #mainToolbar {
     }
     // 点击正文/工具栏/浮层之外 → 退出编辑回预览态。
     // 用 capture 阶段 + mousedown：比 click 更早收手，且工具栏按钮（含展开面板）不会误触。
+    // 顶栏的功能按钮（撤销/重做/主题/胶囊/抽屉/返回/搜索/⋯）也在白名单里：
+    // 否则「编辑中点撤销」会先退出编辑、撤销完停在预览态（用户预期是继续编辑）。
     document.addEventListener('mousedown', function(e) {
       if (edPreview) return;   // 已是预览态，无需退出
-      if (document.body.classList.contains('notes-mode')) return;  // 便签模式无预览态
+      if (!edHasVisibleEditor()) return;  // 便签列表态没有编辑器
       const t = e.target;
       if (!t || !t.closest) return;
       if (t.closest('#ed, #mainToolbar, #fm, #sp, #selBar, #tabCtxMenu, .more-overlay, .modal-overlay, .nv-drawer, .nv-dr-ov, .nv-more-dd')) return;
+      if (t.closest('#undoBtn, #redoBtn, .theme-wrap, .theme-dd, #viewPill, #hdSearch, #nvMenuBtn, #nvBackBtn, #nvSearchBtn, #nvMoreBtn')) return;
       edExitEdit();
     }, true);
 
@@ -13827,7 +13847,8 @@ body.ed-preview #mainToolbar {
     bindEvents();
 
     // 视口尺寸变化（桌面↔移动、旋转等）会改变 #ed padding，同步占位提示偏移
-    window.addEventListener('resize', function() { updatePlaceholder(); syncVtabsBounds(); nvMarkScrollable(); });
+    // （步骤徽标文案分桌面/手机两档，旋转后也要跟着换，否则会留着上一档的宽度）
+    window.addEventListener('resize', function() { updatePlaceholder(); syncVtabsBounds(); nvMarkScrollable(); updateUndoStackInfo(); });
 
     if (isMobile) {
       const btn = $('mobileFormatBtn');

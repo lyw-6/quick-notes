@@ -3782,14 +3782,14 @@ body.ed-preview #mainToolbar {
 [data-theme="frost"] #nvSearchBtn:hover,
 [data-theme="frost"] #nvMoreBtn:hover { background:var(--tool-h); }
 /* ③ 壁纸模式：也去掉主题钮的白玻璃底（用户要求的「都去掉背景」）。
-   壁纸可能是深色，深色图标会糊 → 图标改用顶栏同款深色 + 一圈白色光晕兜底
-   （drop-shadow 对单色 svg 相当于描边，深色壁纸上也能看清轮廓）。
+   ⚠️ 不要再给图标加白色 drop-shadow 光晕 —— 曾经为了兜底深色壁纸加过
+   `drop-shadow(0 0 1.5px rgba(255,255,255,.9))`，但在浅色壁纸上会变成一圈刺眼的
+   白色发光（用户截图反馈「主题切换按钮怎么感觉有白色发光」）。现在保持纯净单色图标。
    其余壁纸控件（.view-pill / .doc-new 等）保持白玻璃 —— 它们承载可读性，用户没要求改。 */
 body.bg-custom .theme-btn {
   background:transparent; border-color:transparent; box-shadow:none;
   backdrop-filter:none; -webkit-backdrop-filter:none;
-  color:#2b3245;
-  filter:drop-shadow(0 0 1.5px rgba(255,255,255,.9)) drop-shadow(0 1px 1px rgba(255,255,255,.75));
+  color:#2b3245; filter:none;
 }
 body.bg-custom .theme-btn:hover { background:rgba(255,255,255,.40); }
 /* ④ 便签模式「点进文档」后不再显示切换标签模式的胶囊（用户要求：编辑态去掉，免得误触切走）。

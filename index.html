@@ -3792,9 +3792,85 @@ body.bg-custom .theme-btn {
   color:#2b3245; filter:none;
 }
 body.bg-custom .theme-btn:hover { background:rgba(255,255,255,.40); }
+
+/* ===== 2026-10-12：顶栏入口收进抽屉 + 步骤徽标移左 + 按下反馈 ===== */
+/* ① 模式胶囊与主题钮都搬进抽屉（视图/主题各一组胶囊并排点选），顶栏只留功能钮 */
+#viewPill, .theme-wrap { display:none; }
+/* ② 步骤徽标现在在顶栏左组（☰ 之后）：尺寸与按钮协调，不吃弹性宽度 */
+.h-left .undo-stack-info { flex:none; margin:0 2px 0 8px; }
+/* ③ 抽屉里的**长条分段控件**（iOS segmented 那种：一个长条槽 + 里面分段切换，不是各自独立的胶囊）
+   视图 2 段 / 主题 4 段；选中段填卡片色 + 轻投影，未选中透明，靠槽底色区分。 */
+.nv-dr-seg {
+  display:flex; gap:2px; padding:3px; width:100%;
+  border-radius:999px; background:var(--tool-h); border:1px solid var(--border);
+}
+.nv-seg-btn {
+  flex:1 1 0; min-width:0; display:inline-flex; align-items:center; justify-content:center; gap:4px;
+  padding:6px 6px; min-height:32px; border-radius:999px;
+  border:none; background:transparent; color:var(--s);
+  font-size:.78rem; white-space:nowrap; cursor:pointer;
+  transition:background .15s, color .15s, box-shadow .15s;
+}
+.nv-seg-btn .ic { width:14px; height:14px; color:var(--s); flex:none; }
+.nv-seg-btn:hover { color:var(--t); }
+.nv-seg-btn.on {
+  background:var(--card); color:var(--p); font-weight:600;
+  box-shadow:0 1px 3px rgba(20,30,60,.12);
+}
+.nv-seg-btn.on .ic { color:var(--p); }
+/* 主题 4 段更挤：字号与图标再收一档，保证一行放得下 */
+.nv-dr-seg-theme .nv-seg-btn { font-size:.72rem; padding:6px 2px; gap:3px; }
+.nv-dr-seg-theme .nv-seg-btn .ic { width:13px; height:13px; }
+/* frost 下抽屉内的透明底按钮必须关 blur（[frost] button 会给所有按钮加，糊出深色方斑） */
+[data-theme="frost"] .nv-seg-btn { backdrop-filter:none; -webkit-backdrop-filter:none; }
+/* ④ 按下瞬间出现主题色圆背景、松手消失（用户要求「都根据自己的主题设计对应的圆按钮背景色」） */
+:root { --press-bg: color-mix(in srgb, var(--p) 15%, transparent); }
+[data-theme="dark"] { --press-bg: color-mix(in srgb, var(--p) 32%, transparent); }
+[data-theme="frost"] { --press-bg: rgba(255,255,255, calc(var(--frost-alpha) * 0.62)); }
+[data-theme="green"] { --press-bg: color-mix(in srgb, var(--p) 17%, transparent); }
+body.bg-custom { --press-bg: rgba(255,255,255,.55); }
+header .icon-btn:active,
+.doc-new:active,
+.nv-dr-x:active,
+.h-left .undo-stack-info:active,
+#nvDrawerClose:active { background:var(--press-bg); }
+/* 步骤徽标是可点的（切换步骤↔字数），给一个指针反馈 */
+.h-left .undo-stack-info { cursor:pointer; }
+/* ⑤ 提示类元素一律带主题色（2026-10-12 用户要求：不要清一色黑白灰）
+   - 步骤/字数徽标：原来是 --tool-h 灰底 + --s 灰字 → 改主色淡染底 + 主色字
+   - toast（.tt）：原来是 #1f1f1f 黑底白字（dark 反色）→ 改主色淡染 + 主色字 + 主色描边
+   - 「已保存」瞬时提示：灰 → 主色
+   - 抽屉分段控件选中段：白底 → 主色淡染
+   ⚠️ dark 下 --p(#3b82f6) 压深底对比不足，字色一律改用 --p-h(#60a5fa)。 */
+.undo-stack-info {
+  background:color-mix(in srgb, var(--p) 15%, transparent);
+  border-color:color-mix(in srgb, var(--p) 32%, transparent);
+  color:var(--p);
+}
+[data-theme="dark"] .undo-stack-info {
+  background:color-mix(in srgb, var(--p) 30%, transparent);
+  border-color:color-mix(in srgb, var(--p) 45%, transparent);
+  color:var(--p-h);
+}
+.tt {
+  background:color-mix(in srgb, var(--p) 14%, var(--card));
+  color:var(--p);
+  border:1px solid color-mix(in srgb, var(--p) 34%, transparent);
+  box-shadow:0 4px 16px rgba(20,30,60,.18);
+}
+[data-theme="dark"] .tt {
+  background:color-mix(in srgb, var(--p) 26%, var(--card));
+  color:var(--p-h);
+}
+#saveStatus { color:var(--p); }
+[data-theme="dark"] #saveStatus { color:var(--p-h); }
+.nv-seg-btn.on { background:color-mix(in srgb, var(--p) 16%, var(--card)); }
 /* ④ 便签模式「点进文档」后不再显示切换标签模式的胶囊（用户要求：编辑态去掉，免得误触切走）。
    列表态保留 —— 那是切回标签模式的入口（连同顶栏 ☰ 抽屉）。 */
 body.notes-mode:not(.notes-list) #viewPill { display:none; }
+/* 便签【列表态】没有编辑器 → 步骤/字数徽标没有意义，隐藏。
+   （它现在挂在顶栏左组 .h-left 里，不再被「.right .meta 整体隐藏」那条规则覆盖） */
+body.notes-mode.notes-list #undoStackInfo { display:none; }
 </style>
 <script>
 (function(){
@@ -4077,6 +4153,9 @@ body.notes-mode:not(.notes-list) #viewPill { display:none; }
     <!-- 便签模式：从笔记进入编辑器后出现的返回按钮（列表态与标签模式下均隐藏） -->
     <button class="icon-btn" id="nvBackBtn" type="button" title="返回笔记列表"><svg class="ic"><use href="#i-chev-l"/></svg></button>
     <div class="nv-ed-title" id="nvEdTitle"></div>
+    <!-- 「步骤 N/M」徽标（2026-10-12：从顶栏右端移到左组；便签文档里排在**文档名右边**）：
+         点击在「步骤 N/M」与「N 字 · N 段 · N 行 · N 分钟」之间切换（不再用长按气泡） -->
+    <span class="undo-stack-info" id="undoStackInfo" title="历史记录步数：当前位置 / 总步数（Ctrl+Z 回退，Ctrl+Y 前进）" role="button" tabindex="0">步骤 0/0</span>
   </div>
   <!-- 视图模式开关（方案D：顶栏中央）。一枚胶囊，图标+文字随当前模式走：
        标签模式 →「便签」，便签（列表态 / 编辑态）→「标签」。
@@ -4092,8 +4171,8 @@ body.notes-mode:not(.notes-list) #viewPill { display:none; }
   </div>
   <div class="right">
     <div class="meta">
+      <!-- 徽标已移到顶栏左端（☰ 之后），这里只留瞬时提示 -->
       <span id="saveStatus" style="opacity:0">已保存</span>
-      <span class="undo-stack-info" id="undoStackInfo" title="历史记录步数：当前位置 / 总步数（Ctrl+Z 回退，Ctrl+Y 前进）">步骤 0/0</span>
     </div>
     <button class="icon-btn" id="undoBtn" type="button" title="撤销 (Ctrl+Z)"><svg class="ic"><use href="#i-undo"/></svg></button>
     <button class="icon-btn" id="redoBtn" type="button" title="重做 (Ctrl+Y)"><svg class="ic"><use href="#i-redo"/></svg></button>
@@ -4126,9 +4205,7 @@ body.notes-mode:not(.notes-list) #viewPill { display:none; }
       <div class="nv-dd-h">导出</div>
       <button type="button" data-nvexport="all"><svg class="ic"><use href="#i-md"/></svg><span>导出全部为 MD</span></button>
     </div>
-  <!-- 长按「步骤 1/1」徽标弹出的字数统计（原来常驻顶栏左端那块文字）。
-       必须挂在 header 下、不能塞进 .right —— .right 有 overflow:hidden，气泡会被裁掉 -->
-  <div class="wc-tip" id="wcTip"></div>
+  <!-- 「长按步骤徽标弹字数气泡」已废弃（2026-10-12：徽标改为点击切换 步骤↔字数，见 bindWcToggle） -->
 </header>
 <!-- 便签模式：侧边抽屉（分组：可新增/编辑/删除；回收站入口） -->
 <div class="nv-dr-ov" id="nvDrawerOv">
@@ -4149,6 +4226,24 @@ body.notes-mode:not(.notes-list) #viewPill { display:none; }
       <div class="nv-dr-h">分组</div>
       <div class="nv-dr-list" id="nvDrGroups"></div>
       <button class="nv-dr-add" id="nvDrAddGroup" type="button"><svg class="ic"><use href="#i-plus"/></svg><span>新建分组</span></button>
+    </div>
+    <!-- 视图 / 主题（2026-10-12：顶栏那枚模式胶囊与主题钮都搬进抽屉，顶栏只留功能钮。
+         两者都是「胶囊并排点选」：视图 2 档、主题 4 档，选中态高亮，点完即生效） -->
+    <div class="nv-dr-sec" id="nvDrViewSec">
+      <div class="nv-dr-h">视图</div>
+      <div class="nv-dr-seg" id="nvDrViewSeg">
+        <button class="nv-seg-btn" data-view-mode="tabs" type="button"><svg class="ic"><use href="#i-tabs"/></svg><span>标签</span></button>
+        <button class="nv-seg-btn" data-view-mode="notes" type="button"><svg class="ic"><use href="#i-list"/></svg><span>便签</span></button>
+      </div>
+    </div>
+    <div class="nv-dr-sec" id="nvDrThemeSec">
+      <div class="nv-dr-h">主题</div>
+      <div class="nv-dr-seg nv-dr-seg-theme" id="nvDrThemeSeg">
+        <button class="nv-seg-btn" data-theme-name="light" type="button"><svg class="ic"><use href="#i-sun"/></svg><span>浅色</span></button>
+        <button class="nv-seg-btn" data-theme-name="dark" type="button"><svg class="ic"><use href="#i-moon"/></svg><span>深色</span></button>
+        <button class="nv-seg-btn" data-theme-name="frost" type="button"><svg class="ic"><use href="#i-frost"/></svg><span>毛玻璃</span></button>
+        <button class="nv-seg-btn" data-theme-name="green" type="button"><svg class="ic"><use href="#i-green"/></svg><span>护眼</span></button>
+      </div>
     </div>
     <!-- 回收站：不要「其他」分类，直接压在抽屉最底部（margin-top:auto） -->
     <button class="nv-dr-row nv-dr-bin" id="nvDrBin" type="button"><svg class="ic"><use href="#i-trash"/></svg><span class="nm">回收站</span><span class="cnt" id="nvBinCnt">0</span></button>
@@ -5991,7 +6086,18 @@ body.notes-mode:not(.notes-list) #viewPill { display:none; }
     const open = on === undefined ? !ov.classList.contains('on') : !!on;
     if (open) nvMoreToggle(false);          // 两层浮层不叠加
     ov.classList.toggle('on', open);
-    if (open) nvRenderDrawer();
+    if (open) { nvRenderDrawer(); nvSyncDrSegs(); }
+  }
+  // 抽屉里两条长条分段控件（视图 标签/便签、主题 四档）的选中态同步
+  function nvSyncDrSegs() {
+    const vm = nvIsNotes() ? 'notes' : 'tabs';
+    const th = document.documentElement.getAttribute('data-theme') || 'light';
+    document.querySelectorAll('#nvDrViewSeg [data-view-mode]').forEach(function(b) {
+      b.classList.toggle('on', b.getAttribute('data-view-mode') === vm);
+    });
+    document.querySelectorAll('#nvDrThemeSeg [data-theme-name]').forEach(function(b) {
+      b.classList.toggle('on', b.getAttribute('data-theme-name') === th);
+    });
   }
   // 标签栏位置下拉的文字/选中态同步（模块级：init 回填与 change 都要用；
   // ⚠️ 不能挂在 DOM 节点的 __sync 上 —— 回填发生在 bindEvents() 之前，那时 __sync 还没挂上）
@@ -6379,6 +6485,7 @@ body.notes-mode:not(.notes-list) #viewPill { display:none; }
     if (nvIsNotes()) document.body.classList.add('notes-list');
     else document.body.classList.remove('notes-list');
     nvSyncModeBtn();
+    nvSyncDrSegs();     // 抽屉里的视图分段控件跟着当前模式走
     if (nvIsNotes()) {
       // 便签模式首屏是列表：列表态没有编辑器 → 摘掉预览态（点条目由 nvOpenNote 进预览态）
       edSetPreview(false);
@@ -6856,6 +6963,21 @@ body.notes-mode:not(.notes-list) #viewPill { display:none; }
       nvDrawerToggle(false);
       nvExportAll();
     });
+    // 抽屉里的长条分段控件（2026-10-12：顶栏的模式胶囊 / 主题钮搬到这里）
+    const drViewSeg = $('nvDrViewSeg');
+    if (drViewSeg) drViewSeg.addEventListener('click', function(e) {
+      const b = e.target.closest ? e.target.closest('[data-view-mode]') : null;
+      if (!b) return;
+      const m = b.getAttribute('data-view-mode');
+      if (m === 'tabs' || m === 'notes') { nvDrawerToggle(false); setViewMode(m); }
+    });
+    const drThemeSeg = $('nvDrThemeSeg');
+    if (drThemeSeg) drThemeSeg.addEventListener('click', function(e) {
+      const b = e.target.closest ? e.target.closest('[data-theme-name]') : null;
+      if (!b) return;
+      applyTheme(b.getAttribute('data-theme-name'));
+      nvSyncDrSegs();
+    });
     // 模板面板里的「管理」：打开共用的模板管理弹窗（模板 / 历史 / 常用语 / 回收站）
     const tplMgrBtn = $('tplMgrBtn');
     if (tplMgrBtn) tplMgrBtn.addEventListener('click', function() {
@@ -7054,6 +7176,14 @@ body.notes-mode:not(.notes-list) #viewPill { display:none; }
     updateUndoStackInfo();
   }
 
+  // 徽标当前显示「字数」还是「步骤 N/M」（2026-10-12：点击切换，取代原来的长按气泡）
+  let wcShowWords = false;
+  function wcBadgeText() {
+    const wc = $('wordCount');
+    const txt = wc && wc.textContent ? wc.textContent.trim() : '';
+    return txt || '0 字 · 0 段 · 0 行 · 1 分钟';
+  }
+
   function updateUndoStackInfo() {
     const u = undoStacks[activeId] || [];
     const r = redoStacks[activeId] || [];
@@ -7061,10 +7191,15 @@ body.notes-mode:not(.notes-list) #viewPill { display:none; }
     const pos = u.length;
     const info = $('undoStackInfo');
     if (info) {
-      // 手机端顶栏余量极小：文案压成「N/M」（配 title 与长按气泡说明），比「步骤 N/M」省 22px
+      // 手机端顶栏余量极小：文案压成「N/M」（比「步骤 N/M」省 22px）
       const compact = window.matchMedia('(max-width:767px)').matches;
-      info.textContent = (compact ? '' : '步骤 ') + pos + '/' + total;
-      info.title = '历史记录步数：第 ' + pos + ' 步 / 共 ' + total + ' 步（Ctrl+Z 回退，Ctrl+Y 前进）\n长按查看字数统计';
+      if (wcShowWords) {
+        info.textContent = wcBadgeText();
+        info.title = '字数 · 段落 · 行数 · 预计阅读时间\n点击看历史步数';
+      } else {
+        info.textContent = (compact ? '' : '步骤 ') + pos + '/' + total;
+        info.title = '历史记录步数：第 ' + pos + ' 步 / 共 ' + total + ' 步（Ctrl+Z 回退，Ctrl+Y 前进）\n点击查看字数统计';
+      }
     }
   }
 
@@ -7075,63 +7210,20 @@ body.notes-mode:not(.notes-list) #viewPill { display:none; }
   // ⚠️ 不用 setPointerCapture：它会把后续 click 的 target 重定向，徽标本身没有 click 行为，
   //    但同一套写法在标签图钉上踩过坑，这里保持不放。
   // ============================================================
-  (function bindWcTip() {
-    const badge = $('undoStackInfo'), tip = $('wcTip'), hd = document.querySelector('header');
-    if (!badge || !tip || !hd) return;
-    let pressTimer = null, hideTimer = null, sx = 0, sy = 0, pinned = false;
-    function tipText() {
-      const wc = $('wordCount');
-      const txt = wc && wc.textContent ? wc.textContent.trim() : '';
-      return txt || '0 字 · 0 段 · 0 行 · 1 分钟';
+  // 「步骤 N/M」徽标（2026-10-12 改）：**点击**在「历史步数」和「字数统计」之间切换。
+  // 原来是「长按 420ms 弹气泡 / 双击常显」，用户明确要求改成可点击切换 → 气泡（.wc-tip）随之废弃。
+  (function bindWcToggle() {
+    const badge = $('undoStackInfo');
+    if (!badge) return;
+    function toggle() {
+      wcShowWords = !wcShowWords;
+      updateUndoStackInfo();
     }
-    function place() {
-      const bb = badge.getBoundingClientRect(), hb = hd.getBoundingClientRect();
-      // 徽标被隐藏（便签列表态）时气泡跟着关掉，别让它孤零零挂着
-      if (!bb.width || !bb.height) { hide(); return; }
-      tip.style.right = Math.max(2, hb.right - bb.right + 4) + 'px';
-      tip.style.top = (bb.bottom - hb.top + 7) + 'px';
-    }
-    function hide() {
-      tip.classList.remove('open', 'pin');
-      badge.classList.remove('pinned');
-      pinned = false;
-      clearTimeout(hideTimer); hideTimer = null;
-    }
-    // pin=false → 长按速览（3.4s 自动消失）；pin=true → 双击常显（不自动消失，随输入刷新）
-    function show(pin) {
-      tip.textContent = tipText();
-      tip.classList.add('open');               // 先上屏再量宽度，才能贴住徽标右缘
-      if (pin) { tip.classList.add('pin'); badge.classList.add('pinned'); pinned = true; }
-      place();
-      clearTimeout(hideTimer); hideTimer = null;
-      if (!pinned) hideTimer = setTimeout(hide, 3400);
-    }
-    function cancel() { clearTimeout(pressTimer); pressTimer = null; }
-    badge.addEventListener('pointerdown', function(e) {
-      sx = e.clientX; sy = e.clientY; cancel();
-      // 常显中不再响应长按：否则会重置 3.4s 计时，把「常显」打回速览
-      if (pinned) return;
-      pressTimer = setTimeout(function() { pressTimer = null; show(false); }, 420);
+    badge.addEventListener('click', toggle);
+    // 键盘可达（role=button + tabindex=0）
+    badge.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
     });
-    badge.addEventListener('pointermove', function(e) {
-      if (pressTimer && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) cancel();
-    });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(t) { badge.addEventListener(t, cancel); });
-    badge.addEventListener('contextmenu', function(e) { e.preventDefault(); });
-    // 双击 = 常显 / 取消常显（长按仍是 3.4s 自动消失的速览，两个手势互不干扰）
-    badge.addEventListener('dblclick', function(e) {
-      e.preventDefault();
-      if (pinned) hide(); else { cancel(); show(true); }
-    });
-    // 速览态：点别处立刻收起。常显态：**任何点击都不关** ——
-    // 否则「点进编辑器继续写」这个最自然的动作会把气泡关掉，常显就失去意义了。
-    document.addEventListener('pointerdown', function(e) {
-      if (pinned) return;
-      if (!badge.contains(e.target)) hide();
-    }, true);
-    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && pinned) hide(); });
-    // 常显中只重新定位（软键盘弹出 / 旋转不该把它关掉），未常显才按原样隐藏
-    window.addEventListener('resize', function() { if (pinned) place(); else hide(); });
   })();
 
   // ============================================================
@@ -9223,8 +9315,8 @@ body.notes-mode:not(.notes-list) #viewPill { display:none; }
     const wc = $('wordCount');
     if (wc) wc.textContent = words + ' 字 · ' + paras + ' 段 · ' + lines + ' 行 · ' + mins + ' 分钟';
     // 气泡处于「常显」时（双击步骤徽标进入）随输入实时刷新字数 —— 否则常显只是一张静态快照
-    const tip = document.getElementById('wcTip');
-    if (tip && tip.classList.contains('pin')) tip.textContent = wc ? wc.textContent : '';
+    // 徽标切到「字数」档时随输入刷新（2026-10-12：取代原来 wcTip 气泡的常显刷新）
+    if (wcShowWords) updateUndoStackInfo();
   }
 
   // 长文节流：统计合并到动画帧，避免输入时高频计算
@@ -11290,6 +11382,7 @@ body.notes-mode:not(.notes-list) #viewPill { display:none; }
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('gw_theme', theme);
     setThemeIcon(theme);
+    if (typeof nvSyncDrSegs === 'function') nvSyncDrSegs();   // 抽屉里的主题分段控件同步
     applyBackground();
     updateBgBtnState();
     refreshFrostControls();

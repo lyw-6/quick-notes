@@ -3694,6 +3694,25 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
   border-color:rgba(255,255,255,.50);
 }
 [data-theme="frost"] #tabCtxMenu button { backdrop-filter:none; -webkit-backdrop-filter:none; }
+
+/* ===== 标签模式：预览态（只读浏览）↔ 编辑态 =====
+   预览态（body.ed-preview）：顶部显示「最后更新时间 + 字数」meta 行（底部分割线与正文隔开）、
+   #ed 只读、底部浮动工具栏收起；点击正文进入编辑：meta 行消失、工具栏显示。
+   点正文/工具栏/浮层外部 → 退回预览态。便签模式不加 ed-preview，不受影响。 */
+.ed-meta {
+  display:none; align-items:center; gap:6px;
+  padding:10px 12px 8px; font-size:12px; line-height:1.4; color:var(--s);
+  background:var(--ed-bg); border-bottom:1px solid var(--border);
+  user-select:none; -webkit-user-select:none; flex:none;
+}
+body.ed-preview .ed-meta { display:flex; }
+/* 预览态不需要「在此输入」占位提示 */
+body.ed-preview .ed-placeholder { display:none; }
+/* 预览态强制收起底部工具栏。toolbarAutoHide 用内联样式显隐，
+   本规则在内联样式被清空后兜底（同特异性后定义 + body class 提权） */
+body.ed-preview #mainToolbar {
+  transform:translateY(calc(100% + 40px)); opacity:0; pointer-events:none;
+}
 </style>
 <script>
 (function(){
@@ -4104,6 +4123,7 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
 <div class="card">
   <!-- 原模板行已移除：模板/阅读等入口移入底部「更多」面板 -->
   <div class="editor-wrap">
+    <div class="ed-meta" id="edMeta"></div>
     <div id="ed" contenteditable="true" spellcheck="false"></div>
     <div class="ed-scroll" id="edScroll"><div class="ed-scroll-thumb" id="edScrollThumb"></div></div>
     <div class="ed-placeholder" id="edPlaceholder">在此输入... 或长按空白处粘贴</div>
@@ -5119,10 +5139,13 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
       ed.innerHTML = activeId ? (docs[activeId].html || '<p><br></p>') : '<p><br></p>';
       updatePlaceholder();
       if (typeof renderTabs === 'function') renderTabs();
+      if (edPreview) updateEdMeta();
       return;
     }
     docs[activeId].ts = Date.now();
     saveDocs();
+    // 预览态下保存 = 时间戳变化，meta 行跟着刷新（编辑态 meta 隐藏，无需刷）
+    if (edPreview) updateEdMeta();
   }
 
   function renderTabs() {
@@ -5311,13 +5334,98 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     redoStacks[id] = [];
     nvPendingNew = id;                 // 标记：这条是「刚新建、还没内容」
     nvPendingTitle = docs[id].title;
-    switchDoc(id);
+    switchDoc(id, { edit: true });      // 新建即进入编辑（预览态是为「打开已有文档」准备的）
   }
 
-  function switchDoc(id) {
+  // ===== 标签模式：预览态（只读浏览）↔ 编辑态 =====
+  // 预览态：#ed 只读 + 顶部 meta 行（最后更新时间/字数）+ 底部工具栏收起；
+  // 点击正文进入编辑：meta 行消失、工具栏显示；点正文/工具栏/浮层外部退回预览态。
+  let edPreview = false;
+
+  function updateEdMeta() {
+    const el = $('edMeta');
+    if (!el) return;
+    const doc = docs[activeId];
+    const ts = doc && doc.ts ? new Date(doc.ts) : null;
+    const t = ts
+      ? ('0' + (ts.getMonth() + 1)).slice(-2) + '-' + ('0' + ts.getDate()).slice(-2) + ' ' +
+        ('0' + ts.getHours()).slice(-2) + ':' + ('0' + ts.getMinutes()).slice(-2)
+      : '--';
+    const ed = $('ed');
+    const words = ed ? (ed.innerText || '').replace(/\s/g, '').length : 0;
+    el.textContent = '最后更新时间 ' + t + ' · ' + words + ' 字';
+  }
+
+  // 工具栏显隐与 toolbarAutoHide（13716 行 IIFE）共用同一组样式，这里直接同步操作
+  function edToolbarShow(on) {
+    const mt = $('mainToolbar');
+    if (!mt) return;
+    if (on) {
+      mt.style.transform = ''; mt.style.opacity = ''; mt.style.pointerEvents = '';
+    } else {
+      mt.style.transform = 'translateY(calc(100% + 40px))';
+      mt.style.opacity = '0';
+      mt.style.pointerEvents = 'none';
+    }
+    const ew = document.querySelector('.editor-wrap');
+    if (ew) ew.classList.toggle('toolbar-hidden', !on);
+  }
+
+  function edSetPreview(on) {
+    edPreview = !!on;
+    document.body.classList.toggle('ed-preview', edPreview);
+    const ed = $('ed');
+    if (ed) ed.setAttribute('contenteditable', edPreview ? 'false' : 'true');
+    if (edPreview) {
+      updateEdMeta();
+      edToolbarShow(false);
+    } else {
+      edToolbarShow(true);
+    }
+  }
+
+  // 进入编辑；pt={x,y} 时光标落到点击处（contenteditable 刚打开，focus() 只会落到开头）
+  function edEnterEdit(pt) {
+    const ed = $('ed');
+    if (!edPreview) { if (ed) ed.focus(); return; }
+    edPreview = false;
+    document.body.classList.remove('ed-preview');
+    if (ed) {
+      ed.setAttribute('contenteditable', 'true');
+      try {
+        if (pt) {
+          let r = null;
+          if (document.caretRangeFromPoint) r = document.caretRangeFromPoint(pt.x, pt.y);
+          else if (document.caretPositionFromPoint) {
+            const cp = document.caretPositionFromPoint(pt.x, pt.y);
+            if (cp) { r = document.createRange(); r.setStart(cp.offsetNode, cp.offset); r.collapse(true); }
+          }
+          if (r && ed.contains(r.startContainer)) {
+            const sel = window.getSelection();
+            sel.removeAllRanges(); sel.addRange(r);
+          }
+        }
+      } catch (e) {}
+      ed.focus();
+    }
+    edToolbarShow(true);
+  }
+
+  // 退出编辑（保存 + 回预览态）。便签模式没有预览态，直接忽略 ——
+  // ⚠️ 不能只靠调用方判断：否则便签模式下点任意处都会走 saveCurrentDoc（刷新 ts）
+  //    并把 body 打上 ed-preview。
+  function edExitEdit() {
+    if (edPreview) return;
+    if (document.body.classList.contains('notes-mode')) return;
+    saveCurrentDoc();
+    edSetPreview(true);
+  }
+
+  function switchDoc(id, opt) {
+    const wantEdit = !!(opt && opt.edit);
     if (id === activeId) {
-      const ed = $('ed');
-      if (ed) ed.focus();
+      // 预览态点当前标签 → 进入编辑；编辑态点当前标签 → 不动（保持编辑）
+      if (wantEdit || edPreview) edEnterEdit();
       return;
     }
     saveCurrentDoc();
@@ -5333,7 +5441,8 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     renderTabs();
     updateStats();
     updateUndoStackInfo();
-    if (ed) ed.focus();
+    // 标签栏点击 → 预览态（只读 + meta 行 + 工具栏收起）；显式要求编辑（新建/便签打开）→ 进编辑
+    if (wantEdit) edEnterEdit(); else edSetPreview(true);
     findIndex = -1;
     findNodes = [];
   }
@@ -5411,6 +5520,8 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     }
     renderTabs();
     updateStats();
+    // 标签模式关掉当前/其他标签后，编辑器切到相邻文档 → 按预览态呈现（便签模式不适用）
+    if (!nvIsNotes()) edSetPreview(true);
     saveDocs();
     gcImages();
     toast('已移至回收站');
@@ -5518,6 +5629,8 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     if (!docs[activeId]) { const k = Object.keys(docs)[0]; if (k) { activeId = k; const ed2 = $('ed'); if (ed2) { ed2.innerHTML = docs[k].html || '<p><br></p>'; updatePlaceholder(); } } }
     renderTabs();
     updateStats();
+    // 批量关闭后编辑器切到幸存文档 → 预览态（便签模式不适用）
+    if (!nvIsNotes()) edSetPreview(true);
     saveDocs();
     gcImages();
     toast(targets.length > 1 ? ('已关闭 ' + targets.length + ' 个标签页，可在回收站找回') : '已移至回收站');
@@ -5546,6 +5659,8 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     if (ed) { ed.innerHTML = docs[it.id].html || '<p><br></p>'; updatePlaceholder(); resolveDocImages(ed); }
     renderTabs();
     updateStats();
+    // 重新打开 = 打开已有文档 → 预览态（与 switchDoc 默认行为一致）
+    if (nvIsNotes()) edSetPreview(false); else edSetPreview(true);
     saveDocs();
     toast('已重新打开「' + (it.title || '文档') + '」');
   }
@@ -6173,7 +6288,15 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     if (nvIsNotes()) document.body.classList.add('notes-list');
     else document.body.classList.remove('notes-list');
     nvSyncModeBtn();
-    if (nvIsNotes()) { nvRenderAll(); nvSyncEdTitle(); } else renderTabs();
+    if (nvIsNotes()) {
+      // 便签模式无预览态（列表→编辑器是显式「打开编辑」语义），清掉标签模式残留
+      edSetPreview(false);
+      nvRenderAll(); nvSyncEdTitle();
+    } else {
+      renderTabs();
+      // 标签模式：打开/切回都是预览态（点正文才进编辑）
+      edSetPreview(true);
+    }
     // 模式切换会改变 .card / #mainToolbar 是否可见 → 左侧栏的边界变量必须重量。
     // 原来只在 init 与「标签栏位置」下拉变化时量，便签列表态切到标签模式就沿用那组过期值（见 syncVtabsBounds 注释）。
     // applyTabPos() 幂等：重打 body.vtabs/btabs + 重测边界 + 归零滚动 + 重新定位「+」。
@@ -6199,7 +6322,7 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
   }
 
   function nvOpenNote(id) {
-    switchDoc(id);
+    switchDoc(id, { edit: true });     // 便签列表点条目 = 显式打开编辑，不走标签模式的预览态
     document.body.classList.remove('notes-list');
     document.body.classList.remove('nv-searching');   // 进编辑器时收起顶栏搜索框（查询词保留，回列表仍是过滤态）
     nvMoreToggle(false);
@@ -6815,6 +6938,7 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     resolveDocImages(ed);
     updateStats();
     updateUndoStackInfo();
+    if (edPreview) updateEdMeta();   // 预览态 meta 行的字数/时间随撤销重做刷新
   }
 
   function redo() {
@@ -11150,11 +11274,17 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     const ed = $('ed');
     if (ed) {
       if (entering) {
+        // 阅读模式自带「隐藏工具栏 + 只读」，与预览态目标重叠：摘掉 ed-preview，
+        // 避免退出阅读时 contenteditable 被 reading 逻辑置 true 而 class 还在
+        document.body.classList.remove('ed-preview');
+        edPreview = false;
         ed.setAttribute('contenteditable', 'false');
         ed.blur();
       } else {
         ed.setAttribute('contenteditable', 'true');
         if (typeof lsExit === 'function') lsExit();
+        // 退出阅读回到标签模式 → 恢复预览态（便签模式不适用）
+        if (!nvIsNotes()) edSetPreview(true);
       }
     }
   }
@@ -13090,6 +13220,31 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
       });
     }
 
+    // 预览态点击正文 → 进入编辑（链接除外：预览态点链接应正常跳转/复制）。
+    // 光标落点由下方 13121 行的 click 修正逻辑（caretRangeFromPoint）接着处理。
+    const ed0 = $('ed');
+    if (ed0) {
+      ed0.addEventListener('click', function(e) {
+        if (!edPreview) return;
+        if (e.target && e.target.closest && e.target.closest('a')) return;
+        edEnterEdit({ x: e.clientX, y: e.clientY });
+      });
+      // 编辑态按 Esc → 退回预览态（与「点外部退出」一致）
+      ed0.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !edPreview) edExitEdit();
+      });
+    }
+    // 点击正文/工具栏/浮层之外 → 退出编辑回预览态。
+    // 用 capture 阶段 + mousedown：比 click 更早收手，且工具栏按钮（含展开面板）不会误触。
+    document.addEventListener('mousedown', function(e) {
+      if (edPreview) return;   // 已是预览态，无需退出
+      if (document.body.classList.contains('notes-mode')) return;  // 便签模式无预览态
+      const t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest('#ed, #mainToolbar, #fm, #sp, #selBar, #tabCtxMenu, .more-overlay, .modal-overlay, .nv-drawer, .nv-dr-ov, .nv-more-dd')) return;
+      edExitEdit();
+    }, true);
+
     // 编辑器事件
     const ed = $('ed');
     if (ed) {
@@ -13651,6 +13806,8 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
     wrapTables(ed);
     updateStats();
     updateUndoStackInfo();
+    // 标签模式首屏即预览态：applyViewMode 已加 ed-preview，这里补一次 meta（字数依赖 innerHTML 就位）
+    updateEdMeta();
     renderTemplateDropdown();
     if (selectedTemplateKey) {
       const trigger = $('ddTrigger');
@@ -13746,9 +13903,14 @@ body.vtabs:not(.notes-mode) .doc-tab.drop-after { box-shadow: inset 0 -3px 0 0 v
       if (ed && document.activeElement === ed && (Date.now() - lastInputTs) < 400) return;
       setHidden(true);
     }
-    function show() { setHidden(false); }
+    // 预览态（标签模式只读浏览）工具栏恒定收起：任何路径都不允许把它放出来
+    function show() {
+      if (document.body.classList.contains('ed-preview')) return;
+      setHidden(false);
+    }
 
     function check(edTarget) {
+      if (document.body.classList.contains('ed-preview')) return; // 预览态不参与滚动显隐
       let cur, last;
       if (edTarget) {
         cur = edTarget.scrollTop; last = edLast;
